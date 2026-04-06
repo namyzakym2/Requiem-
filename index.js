@@ -34,8 +34,17 @@ import { createCanvas, loadImage } from "canvas";
 import GIFEncoder from "gif-encoder-2";
 import db from "./src/lib/db.ts";
 import dotenv from "dotenv";
+import { config } from "./config.js";
 
 dotenv.config();
+
+// Configuration fallbacks
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN || config.discordToken;
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || config.clientId;
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || config.clientSecret;
+const APP_URL = process.env.APP_URL || config.appUrl;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || config.geminiApiKey;
+const JWT_SECRET = process.env.JWT_SECRET || config.jwtSecret;
 
 // Discord Bot Setup
 const client = new Client({
@@ -698,7 +707,7 @@ const AUTHORIZED_CURRENCY_IDS = ["1319641803409985661", "1365356622922256525", "
 const logs: string[] = [];
 
 const aiModel = "gemini-3-flash-preview";
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY! });
 
 async function handleAIResponse(message: any, prompt: string) {
   try {
@@ -5498,7 +5507,7 @@ client.on("interactionCreate", async (interaction) => {
             const response = await axios.put(
               `https://discord.com/api/guilds/${targetGuildId}/members/${tokenData.userId}`,
               { access_token: accessToken },
-              { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
+              { headers: { Authorization: `Bot ${DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
             );
 
             if (response.status === 201 || response.status === 204) {
@@ -6003,7 +6012,7 @@ client.on("interactionCreate", async (interaction) => {
             const response = await axios.put(
               `https://discord.com/api/guilds/${targetGuildId}/members/${tokenData.userId}`,
               { access_token: accessToken },
-              { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
+              { headers: { Authorization: `Bot ${DISCORD_TOKEN}`, 'Content-Type': 'application/json' } }
             );
 
             if (response.status === 201 || response.status === 204) {
@@ -7510,10 +7519,10 @@ print("🚀 Blox Fruits Worker Started!")
     if (interaction.guildId === '1254568460764053566') {
       return interaction.reply({ content: "❌ ميزة التحقق معطلة في هذا السيرفر بناءً على طلب المالك.", ephemeral: true });
     }
-    let appUrl = process.env.APP_URL || "";
+    let appUrl = APP_URL || "";
     appUrl = appUrl.replace(/\/$/, "");
     const REDIRECT_URI = `${appUrl}/api/auth/callback`;
-    const OAUTH_URL = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join&state=${interaction.guildId}`;
+    const OAUTH_URL = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify%20guilds.join&state=${interaction.guildId}`;
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -7544,8 +7553,8 @@ print("🚀 Blox Fruits Worker Started!")
 async function refreshAccessToken(refreshToken: string) {
   try {
     const response = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
-      client_id: process.env.DISCORD_CLIENT_ID!,
-      client_secret: process.env.DISCORD_CLIENT_SECRET!,
+      client_id: DISCORD_CLIENT_ID!,
+      client_secret: DISCORD_CLIENT_SECRET!,
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
     }), {
@@ -7564,7 +7573,7 @@ async function refreshAccessToken(refreshToken: string) {
 async function startServer() {
   console.log("Starting server initialization...");
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   app.use(express.json());
   app.use(cookieParser());
@@ -7582,7 +7591,7 @@ async function startServer() {
 
   app.use(session({
     store: sessionStore,
-    secret: 'requiem-persistent-secret-key-99',
+    secret: JWT_SECRET || 'requiem-persistent-secret-key-99',
     resave: false,
     saveUninitialized: false,
     proxy: true,
@@ -8252,12 +8261,12 @@ async function startServer() {
 
   // Dashboard Auth Routes
   app.get("/api/auth/login", (req, res) => {
-    let appUrl = process.env.APP_URL;
-    const clientId = process.env.DISCORD_CLIENT_ID;
+    let appUrl = APP_URL;
+    const clientId = DISCORD_CLIENT_ID;
 
     if (!appUrl || !clientId) {
       console.error("Missing APP_URL or DISCORD_CLIENT_ID for auth login.");
-      return res.status(500).send("Server configuration error: Missing APP_URL or DISCORD_CLIENT_ID. Please set these in AI Studio Secrets.");
+      return res.status(500).send("Server configuration error: Missing APP_URL or DISCORD_CLIENT_ID. Please set these in config.ts or environment variables.");
     }
 
     // Remove trailing slash if present
@@ -8282,13 +8291,13 @@ async function startServer() {
       return res.status(400).send("Missing code from Discord. Did you cancel the login?");
     }
 
-    let appUrl = process.env.APP_URL;
-    const clientId = process.env.DISCORD_CLIENT_ID;
-    const clientSecret = process.env.DISCORD_CLIENT_SECRET;
+    let appUrl = APP_URL;
+    const clientId = DISCORD_CLIENT_ID;
+    const clientSecret = DISCORD_CLIENT_SECRET;
 
     if (!appUrl || !clientId || !clientSecret) {
       console.error("Missing APP_URL, DISCORD_CLIENT_ID, or DISCORD_CLIENT_SECRET for auth callback.");
-      return res.status(500).send("Server configuration error: Missing environment variables.");
+      return res.status(500).send("Server configuration error: Missing environment variables or config.ts settings.");
     }
 
     // Remove trailing slash if present
@@ -8371,14 +8380,14 @@ async function startServer() {
     const { code, state: guildId } = req.query;
     if (!code) return res.status(400).send("Missing code");
 
-    let appUrl = process.env.APP_URL || "";
+    let appUrl = APP_URL || "";
     appUrl = appUrl.replace(/\/$/, "");
 
     try {
       const REDIRECT_URI = `${appUrl}/api/auth/callback`;
       const response = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
-        client_id: process.env.DISCORD_CLIENT_ID!,
-        client_secret: process.env.DISCORD_CLIENT_SECRET!,
+        client_id: DISCORD_CLIENT_ID!,
+        client_secret: DISCORD_CLIENT_SECRET!,
         grant_type: 'authorization_code',
         code: code as string,
         redirect_uri: REDIRECT_URI,
@@ -8481,12 +8490,12 @@ async function startServer() {
   });
 
   // Start Discord Bot
-  if (process.env.DISCORD_TOKEN) {
-    client.login(process.env.DISCORD_TOKEN).catch(err => {
+  if (DISCORD_TOKEN) {
+    client.login(DISCORD_TOKEN).catch(err => {
       console.error("Failed to login to Discord:", err);
     });
   } else {
-    console.warn("DISCORD_TOKEN not found in environment variables.");
+    console.warn("DISCORD_TOKEN not found in environment variables or config.ts.");
   }
 }
 
