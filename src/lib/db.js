@@ -1,9 +1,5 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-
-const db = new Database('bot.db');
-
-// Initialize tables
+import Database from "better-sqlite3";
+const db = new Database("bot.db");
 db.exec(`
   CREATE TABLE IF NOT EXISTS leveling (
     userId TEXT,
@@ -97,7 +93,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS leveling_settings (
     guildId TEXT PRIMARY KEY,
-    message TEXT DEFAULT 'Congratulations {user}! You leveled up to **Level {level}**! 🎉',
+    message TEXT DEFAULT 'Congratulations {user}! You leveled up to **Level {level}**! \u{1F389}',
     channelId TEXT,
     enabled INTEGER DEFAULT 1
   );
@@ -329,11 +325,9 @@ db.exec(`
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
-
-// Migration: Update leveling table to include guildId and composite PK
 try {
-  const info = db.prepare("PRAGMA table_info(leveling)").all() as any[];
-  const hasGuildId = info.some(col => col.name === 'guildId');
+  const info = db.prepare("PRAGMA table_info(leveling)").all();
+  const hasGuildId = info.some((col) => col.name === "guildId");
   if (!hasGuildId) {
     db.exec(`
       CREATE TABLE leveling_new (
@@ -349,13 +343,11 @@ try {
     `);
   }
 } catch (e) {
-  // Table might not exist yet or other error
 }
-
-function addColumnIfNotExists(table: string, column: string, type: string) {
+function addColumnIfNotExists(table, column, type) {
   try {
-    const info = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
-    const exists = info.some(col => col.name === column);
+    const info = db.prepare(`PRAGMA table_info(${table})`).all();
+    const exists = info.some((col) => col.name === column);
     if (!exists) {
       db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type};`);
       console.log(`Added column ${column} to ${table}`);
@@ -364,36 +356,18 @@ function addColumnIfNotExists(table: string, column: string, type: string) {
     console.error(`Failed to add column ${column} to ${table}:`, e);
   }
 }
-
-// Migration: Add category column if it doesn't exist
-addColumnIfNotExists('tickets', 'category', 'TEXT');
-
-// Migration: Add staffId column if it doesn't exist
-addColumnIfNotExists('tickets', 'staffId', 'TEXT');
-
-// Migration: Add verifiedRoleId to protection_settings
-addColumnIfNotExists('protection_settings', 'verifiedRoleId', 'TEXT');
-
-// Migration: Add enabled to welcome_settings
-addColumnIfNotExists('welcome_settings', 'enabled', 'INTEGER DEFAULT 1');
-
-// Migration: Add xb column to leveling
-addColumnIfNotExists('leveling', 'xb', 'INTEGER DEFAULT 0');
-
-// Migration: Add robloxId to blox_fruits_requests
-addColumnIfNotExists('blox_fruits_requests', 'robloxId', 'TEXT');
-
-// Migration: Add enabled to leveling_settings
-addColumnIfNotExists('leveling_settings', 'enabled', 'INTEGER DEFAULT 1');
-
-// Migration: Add bot protection columns
-addColumnIfNotExists('protection_settings', 'antiBot', 'INTEGER DEFAULT 0');
-addColumnIfNotExists('protection_settings', 'antiChannelControl', 'INTEGER DEFAULT 0');
-
-// Migration: Add logBotAdd to logging_settings
-addColumnIfNotExists('logging_settings', 'logBotAdd', 'INTEGER DEFAULT 0');
-
-// Migration: Add counterNuke to protection_settings
-addColumnIfNotExists('protection_settings', 'counterNuke', 'INTEGER DEFAULT 0');
-
-export default db;
+addColumnIfNotExists("tickets", "category", "TEXT");
+addColumnIfNotExists("tickets", "staffId", "TEXT");
+addColumnIfNotExists("protection_settings", "verifiedRoleId", "TEXT");
+addColumnIfNotExists("welcome_settings", "enabled", "INTEGER DEFAULT 1");
+addColumnIfNotExists("leveling", "xb", "INTEGER DEFAULT 0");
+addColumnIfNotExists("blox_fruits_requests", "robloxId", "TEXT");
+addColumnIfNotExists("leveling_settings", "enabled", "INTEGER DEFAULT 1");
+addColumnIfNotExists("protection_settings", "antiBot", "INTEGER DEFAULT 0");
+addColumnIfNotExists("protection_settings", "antiChannelControl", "INTEGER DEFAULT 0");
+addColumnIfNotExists("logging_settings", "logBotAdd", "INTEGER DEFAULT 0");
+addColumnIfNotExists("protection_settings", "counterNuke", "INTEGER DEFAULT 0");
+var db_default = db;
+export {
+  db_default as default
+};
