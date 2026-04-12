@@ -2287,7 +2287,7 @@ ${data.riddle}`).setColor(16753920).setFooter({ text: "\u0644\u062F\u064A\u0643 
           if (!botMember?.permissions.has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageRoles])) {
             return message.reply("\u274C \u0627\u0644\u0628\u0648\u062A \u064A\u0641\u062A\u0642\u0631 \u0625\u0644\u0649 \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0627\u062A \u0627\u0644\u0644\u0627\u0632\u0645\u0629 (\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0642\u0646\u0648\u0627\u062A\u060C \u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0631\u062A\u0628).");
           }
-          await message.reply("\u26A0\uFE0F \u062C\u0627\u0631\u064I \u0627\u0644\u0628\u062F\u0621 \u0641\u064A \u0625\u0639\u0627\u062F\u0629 \u062A\u0639\u064I\u064A\u0646 \u0627\u0644\u0633\u064I\u0631\u0641\u0631 (\u0627\u0644\u0631\u0648\u0645\u0627\u062A\u060C \u0648\u0627\u0644\u0631\u062A\u0628)...");
+          await message.reply("\u26A0\uFE0F \u062C\u0627\u0631\u064A \u0627\u0644\u0628\u062F\u0621 \u0641\u064A \u0625\u0639\u0627\u062F\u0629 \u062A\u0639\u064A\u064A\u0646 \u0627\u0644\u0633\u064A\u0631\u0641\u0631 (\u0627\u0644\u0631\u0648\u0645\u0627\u062A\u060C \u0648\u0627\u0644\u0631\u062A\u0628)...");
           try {
             const channels = await message.guild?.channels.fetch();
             if (channels) {
@@ -5893,12 +5893,13 @@ async function refreshAccessToken(refreshToken) {
   }
 }
 async function startServer() {
-  console.log("Starting server initialization...");
-  const app = express();
-  const PORT = process.env.PORT || 3e3;
-  app.use(express.json());
-  app.use(cookieParser());
-  app.set("trust proxy", 1);
+  try {
+    console.log("Starting server initialization...");
+    const app = express();
+    const PORT = process.env.PORT || 3000;
+    app.use(express.json());
+    app.use(cookieParser());
+    app.set("trust proxy", 1);
   console.log("Setting up session store...");
   const SqliteStore = SQLiteStore(session);
   const sessionStore = new SqliteStore({
@@ -6663,21 +6664,25 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.resolve(process.cwd(), "dist");
+    const distPath = path.resolve(process.cwd(), "dashboard");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.resolve(distPath, "index.html"));
     });
   }
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-  if (DISCORD_TOKEN) {
-    client.login(DISCORD_TOKEN).catch((err) => {
-      console.error("Failed to login to Discord:", err);
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://0.0.0.0:${PORT}`);
     });
-  } else {
-    console.warn("DISCORD_TOKEN not found in environment variables or config.ts.");
+    if (DISCORD_TOKEN) {
+      client.login(DISCORD_TOKEN).catch((err) => {
+        console.error("Failed to login to Discord:", err);
+      });
+    } else {
+      console.warn("DISCORD_TOKEN not found in environment variables or config.js.");
+    }
+  } catch (error) {
+    console.error("CRITICAL SERVER STARTUP ERROR:", error);
+    process.exit(1);
   }
 }
 startServer();
