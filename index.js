@@ -673,21 +673,27 @@ setInterval(async () => {
   console.log("Running automatic backups...");
   for (const guild of client.guilds.cache.values()) {
     try {
-      const roles = guild.roles.cache.map((r) => ({
-        name: r.name,
-        color: r.color,
-        hoist: r.hoist,
-        permissions: r.permissions.bitfield.toString(),
-        mentionable: r.mentionable,
-        position: r.position
-      }));
+      const roles = guild.roles.cache.filter((r) => !r.managed && r.id !== guild.id)
+        .sort((a, b) => a.position - b.position)
+        .map((r) => ({
+          id: r.id,
+          name: r.name,
+          color: r.color,
+          hoist: r.hoist,
+          permissions: r.permissions.bitfield.toString(),
+          mentionable: r.mentionable,
+          position: r.position,
+          icon: r.iconURL({ extension: "png" }) || null,
+          unicodeEmoji: r.unicodeEmoji || null
+        }));
       const channels = guild.channels.cache.map((c) => ({
+        id: c.id,
         name: c.name,
         type: c.type,
         topic: c.topic || null,
         nsfw: c.nsfw || false,
         parentId: c.parentId || null,
-        position: c.rawPosition,
+        position: c.position,
         permissionOverwrites: c.permissionOverwrites?.cache.map((o) => ({
           id: o.id,
           type: o.type,
@@ -921,16 +927,8 @@ client.on("ready", async () => {
   try {
     console.log("Started refreshing application (/) commands.");
     if (client.application) {
-      await client.application.commands.set([]);
-      console.log("Cleared global application (/) commands to prevent duplicates.");
-    }
-    for (const guild of client.guilds.cache.values()) {
-      try {
-        await guild.commands.set(commands);
-        console.log(`Successfully reloaded commands for guild: ${guild.name} (${guild.id})`);
-      } catch (err) {
-        console.error(`Failed to set commands for guild ${guild.id}:`, err);
-      }
+      await client.application.commands.set(commands);
+      console.log("Successfully reloaded global application (/) commands.");
     }
     setInterval(async () => {
       try {
@@ -5062,46 +5060,59 @@ ${question.q}`).setColor(65280).setThumbnail("https://i.imgur.com/XyXyXyX.png").
               await channel2.delete().catch(() => null);
             }
           }
-          await interaction.editReply("\u{1F3A8} \u062C\u0627\u0631\u064A \u0646\u0633\u062E \u0627\u0644\u0625\u064A\u0645\u0648\u062C\u064A\u0627\u062A \u0648\u0627\u0644\u0633\u062A\u064A\u0643\u0631\u0627\u062A... (40%)").catch(() => null);
-          const sourceEmojis = await sourceGuild.emojis.fetch().catch(() => /* @__PURE__ */ new Map());
-          for (const emoji of sourceEmojis.values()) {
-            await guild.emojis.create({ attachment: emoji.url, name: emoji.name || "emoji" }).catch(() => null);
-          }
-          const sourceStickers = await sourceGuild.stickers.fetch().catch(() => /* @__PURE__ */ new Map());
-          for (const sticker of sourceStickers.values()) {
-            await guild.stickers.create({ file: sticker.url, name: sticker.name, tags: sticker.tags || "sticker" }).catch(() => null);
-          }
           await interaction.editReply("\u{1F6E1}\uFE0F \u062C\u0627\u0631\u064A \u0646\u0633\u062E \u0627\u0644\u0631\u062A\u0628... (50%)").catch(() => null);
-          const sourceRoles = (await sourceGuild.roles.fetch()).sort((a, b) => a.position - b.position);
+          const sourceRoles = (await sourceGuild.roles.fetch()).sort((a, b) => b.position - a.position);
           const roleMap = /* @__PURE__ */ new Map();
           const createdRoles = [];
           for (const role of sourceRoles.values()) {
             if (role.name !== "@everyone" && !role.managed) {
-              const newRole = await guild.roles.create({
+              const roleData = {
                 name: role.name,
                 color: role.color,
                 hoist: role.hoist,
                 permissions: role.permissions,
                 mentionable: role.mentionable,
                 reason: "Server Copy"
-              }).catch(() => null);
+              };
+              if (role.icon) {
+                try {
+                  const iconUrl = role.iconURL({ extension: "png" });
+                  if (iconUrl) {
+                    const response = await axios.get(iconUrl, { responseType: "arraybuffer" });
+                    roleData.icon = Buffer.from(response.data);
+                  }
+                } catch (e) {
+                  console.error(`Failed to fetch role icon for ${role.name}:`, e);
+                }
+              } else if (role.unicodeEmoji) {
+                roleData.unicodeEmoji = role.unicodeEmoji;
+              }
+              const newRole = await guild.roles.create(roleData).catch((err) => {
+                console.error(`Failed to create role ${role.name}:`, err);
+                return null;
+              });
               if (newRole) {
                 roleMap.set(role.id, newRole.id);
-                createdRoles.push({ role: newRole, sourcePosition: role.position });
+                createdRoles.push(newRole);
               }
             }
           }
           if (createdRoles.length > 0) {
-            const positions = createdRoles.map((cr, index) => ({
-              role: cr.role.id,
+            const sortedCreatedRoles = [...createdRoles].sort((a, b) => {
+              const posA = sourceRoles.get([...roleMap.entries()].find(([oldId, newId]) => newId === a.id)?.[0])?.position || 0;
+              const posB = sourceRoles.get([...roleMap.entries()].find(([oldId, newId]) => newId === b.id)?.[0])?.position || 0;
+              return posA - posB;
+            });
+            const positions = sortedCreatedRoles.map((role, index) => ({
+              role: role.id,
               position: index + 1
-              // Start from 1 above @everyone
             }));
             await guild.roles.setPositions(positions).catch((err) => console.error("Failed to set role positions:", err));
           }
           await interaction.editReply("\u{1F4C2} \u062C\u0627\u0631\u064A \u0646\u0633\u062E \u0627\u0644\u0642\u0646\u0648\u0627\u062A \u0648\u0627\u0644\u0641\u0626\u0627\u062A... (70%)").catch(() => null);
           const sourceChannels = await sourceGuild.channels.fetch();
           const categoryMap = /* @__PURE__ */ new Map();
+          const channelMap = /* @__PURE__ */ new Map();
           const categories = sourceChannels.filter((c) => c?.type === ChannelType.GuildCategory).sort((a, b) => (a?.position || 0) - (b?.position || 0));
           for (const cat of categories.values()) {
             if (!cat) continue;
@@ -5116,7 +5127,10 @@ ${question.q}`).setColor(65280).setThumbnail("https://i.imgur.com/XyXyXyX.png").
                 type: po.type
               }))
             }).catch(() => null);
-            if (newCat) categoryMap.set(cat.id, newCat.id);
+            if (newCat) {
+              categoryMap.set(cat.id, newCat.id);
+              channelMap.set(cat.id, newCat.id);
+            }
           }
           const otherChannels = sourceChannels.filter((c) => c?.type !== ChannelType.GuildCategory).sort((a, b) => (a?.position || 0) - (b?.position || 0));
           for (const ch of otherChannels.values()) {
@@ -5149,9 +5163,74 @@ ${question.q}`).setColor(65280).setThumbnail("https://i.imgur.com/XyXyXyX.png").
               channelData.rateLimitPerUser = ch.rateLimitPerUser || 0;
               channelData.defaultThreadRateLimitPerUser = ch.defaultThreadRateLimitPerUser || 0;
             }
-            await guild.channels.create(channelData).catch(() => null);
+            const newCh = await guild.channels.create(channelData).catch(() => null);
+            if (newCh) channelMap.set(ch.id, newCh.id);
           }
-          await interaction.editReply("\u2705 \u062A\u0645 \u0646\u0633\u062E \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0628\u0646\u062C\u0627\u062D! (100%)").catch(() => null);
+          await interaction.editReply("\u{1F3AB} \u062C\u0627\u0631\u064A \u0646\u0633\u062E \u0627\u0644\u0627\u0633\u062A\u0643\u0631\u0627\u062A... (80%)").catch(() => null);
+          const sourceStickers = await sourceGuild.stickers.fetch().catch(() => /* @__PURE__ */ new Map());
+          for (const sticker of sourceStickers.values()) {
+            await guild.stickers.create({ file: sticker.url, name: sticker.name, tags: sticker.tags || "sticker" }).catch(() => null);
+          }
+          await interaction.editReply("\u2699\uFE0F \u062C\u0627\u0631\u064A \u0646\u0633\u062E \u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0627\u0644\u0628\u0648\u062A... (90%)").catch(() => null);
+          const settingTables = [
+            { name: "protection_settings", pkey: "guildId", roleCols: ["verifiedRoleId"], chanCols: ["logChannel"] },
+            { name: "welcome_settings", pkey: "guildId", chanCols: ["channelId"] },
+            { name: "leveling_settings", pkey: "guildId", chanCols: ["channelId"] },
+            { name: "auto_roles", pkey: "guildId", roleCols: ["roleId"] },
+            { name: "badwords", pkey: "guildId" },
+            { name: "auto_responses", pkey: "guildId" },
+            { name: "apply_settings", pkey: "guildId", chanCols: ["channelId"], roleCols: ["roleId", "staffRoleId"] },
+            { name: "suggestion_settings", pkey: "guildId", chanCols: ["channelId"] },
+            { name: "evaluation_settings", pkey: "guildId", chanCols: ["channelId"] },
+            { name: "azkar_settings", pkey: "guildId", chanCols: ["channelId"] },
+            { name: "custom_azkar", pkey: "guildId" },
+            { name: "currency_log_settings", pkey: "guildId", chanCols: ["channelId"] },
+            { name: "bonus_role_settings", pkey: "guildId", roleCols: ["maxRoleId", "baseRoleId"] },
+            { name: "bonus_roles", pkey: "guildId", roleCols: ["roleId"] },
+            { name: "logging_settings", pkey: "guildId", chanCols: ["channelId"] },
+            { name: "whitelisted_bots", pkey: "guildId" },
+            { name: "ticket_categories", pkey: "guildId", roleCols: ["roleId"] },
+            { name: "command_permissions", pkey: "guildId", chanCols: ["channelId"] },
+            { name: "aliases", pkey: "guildId" }
+          ];
+          for (const table of settingTables) {
+            const rows = db.prepare(`SELECT * FROM ${table.name} WHERE guildId = ?`).all(sourceGuild.id);
+            if (rows.length > 0) {
+              db.prepare(`DELETE FROM ${table.name} WHERE guildId = ?`).run(guild.id);
+              for (const row of rows) {
+                const newRow = { ...row, guildId: guild.id };
+                if (table.roleCols) {
+                  for (const col of table.roleCols) {
+                    if (newRow[col]) newRow[col] = roleMap.get(newRow[col]) || newRow[col];
+                  }
+                }
+                if (table.chanCols) {
+                  for (const col of table.chanCols) {
+                    if (newRow[col]) newRow[col] = channelMap.get(newRow[col]) || newRow[col];
+                  }
+                }
+                if (table.name === "bonus_role_settings" && newRow.excludedRoleIds) {
+                  try {
+                    const ids = JSON.parse(newRow.excludedRoleIds);
+                    const newIds = ids.map((id) => roleMap.get(id) || id);
+                    newRow.excludedRoleIds = JSON.stringify(newIds);
+                  } catch (e) {
+                  }
+                }
+                const columns = Object.keys(newRow);
+                const placeholders = columns.map(() => "?").join(", ");
+                const values = Object.values(newRow);
+                db.prepare(`INSERT INTO ${table.name} (${columns.join(", ")}) VALUES (${placeholders})`).run(...values);
+              }
+            }
+          }
+          if (sourceGuild.afkChannelId || sourceGuild.systemChannelId) {
+            await guild.edit({
+              afkChannel: sourceGuild.afkChannelId ? channelMap.get(sourceGuild.afkChannelId) : null,
+              systemChannel: sourceGuild.systemChannelId ? channelMap.get(sourceGuild.systemChannelId) : null
+            }).catch(() => null);
+          }
+          await interaction.editReply("\u2705 \u062A\u0645 \u0646\u0633\u062E \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0628\u0627\u0644\u0643\u0627\u0645\u0644 \u0628\u0645\u0627 \u0641\u064A \u0630\u0644\u0643 \u0627\u0644\u0625\u0639\u062F\u0627\u062F\u0627\u062A \u0648\u0627\u0644\u0627\u0633\u062A\u0643\u0631\u0627\u062A! (100%)").catch(() => null);
           const sourceMembers = await sourceGuild.members.fetch();
           const bots = sourceMembers.filter((m) => m.user.bot && m.id !== client.user?.id);
           if (bots.size > 0) {
@@ -6270,20 +6349,27 @@ async function startServer() {
     const guild = client.guilds.cache.get(guildId);
     if (!guild) return res.status(404).json({ error: "Guild not found" });
     try {
-      const roles = guild.roles.cache.filter((r) => !r.managed && r.id !== guild.id).map((r) => ({
-        name: r.name,
-        color: r.color,
-        hoist: r.hoist,
-        permissions: r.permissions.bitfield.toString(),
-        mentionable: r.mentionable,
-        position: r.position
-      }));
+      const roles = guild.roles.cache.filter((r) => !r.managed && r.id !== guild.id)
+        .sort((a, b) => a.position - b.position)
+        .map((r) => ({
+          id: r.id,
+          name: r.name,
+          color: r.color,
+          hoist: r.hoist,
+          permissions: r.permissions.bitfield.toString(),
+          mentionable: r.mentionable,
+          position: r.position,
+          icon: r.iconURL({ extension: "png" }) || null,
+          unicodeEmoji: r.unicodeEmoji || null
+        }));
       const channels = guild.channels.cache.map((c) => ({
+        id: c.id,
         name: c.name,
         type: c.type,
         parentId: c.parentId,
         topic: c.topic || null,
         nsfw: c.nsfw || false,
+        position: c.position,
         rateLimitPerUser: c.rateLimitPerUser || 0,
         permissionOverwrites: c.permissionOverwrites?.cache.map((o) => ({
           id: o.id,
@@ -6309,23 +6395,71 @@ async function startServer() {
     if (!backup) return res.status(404).json({ error: "Backup not found" });
     try {
       const data = JSON.parse(backup.data);
-      for (const r of data.roles) {
-        await guild.roles.create({
+      const roleMap = new Map();
+      const createdRoles = [];
+      const sortedRoles = data.roles.sort((a, b) => a.position - b.position);
+      for (const r of sortedRoles) {
+        const roleData = {
           name: r.name,
           color: r.color,
           hoist: r.hoist,
           permissions: BigInt(r.permissions),
           mentionable: r.mentionable,
           reason: "Backup Restore"
-        }).catch(console.error);
+        };
+        if (r.icon) {
+          try {
+            const response = await axios.get(r.icon, { responseType: "arraybuffer" });
+            roleData.icon = Buffer.from(response.data);
+          } catch (e) {
+            console.error("Failed to restore role icon:", e);
+          }
+        } else if (r.unicodeEmoji) {
+          roleData.unicodeEmoji = r.unicodeEmoji;
+        }
+        const newRole = await guild.roles.create(roleData).catch(console.error);
+        if (newRole) {
+          roleMap.set(r.id, newRole.id);
+          createdRoles.push(newRole);
+        }
       }
-      for (const c of data.channels) {
+      if (createdRoles.length > 0) {
+        const positions = createdRoles.map((role, index) => ({
+          role: role.id,
+          position: index + 1
+        }));
+        await guild.roles.setPositions(positions).catch(console.error);
+      }
+      const categoryMap = new Map();
+      const categories = data.channels.filter((c) => c.type === ChannelType.GuildCategory).sort((a, b) => a.position - b.position);
+      for (const cat of categories) {
+        const newCat = await guild.channels.create({
+          name: cat.name,
+          type: ChannelType.GuildCategory,
+          permissionOverwrites: cat.permissionOverwrites?.map((o) => ({
+            id: roleMap.get(o.id) || o.id,
+            type: o.type,
+            allow: BigInt(o.allow),
+            deny: BigInt(o.deny)
+          }))
+        }).catch(console.error);
+        if (newCat) categoryMap.set(cat.id, newCat.id);
+      }
+      const others = data.channels.filter((c) => c.type !== ChannelType.GuildCategory).sort((a, b) => a.position - b.position);
+      for (const c of others) {
         await guild.channels.create({
           name: c.name,
           type: c.type,
           topic: c.topic,
           nsfw: c.nsfw,
+          parent: c.parentId ? categoryMap.get(c.parentId) : null,
           rateLimitPerUser: c.rateLimitPerUser,
+          permissionOverwrites: c.permissionOverwrites?.map((o) => ({
+            id: roleMap.get(o.id) || o.id,
+            type: o.type,
+            allow: BigInt(o.allow),
+            deny: BigInt(o.deny)
+          })),
           reason: "Backup Restore"
         }).catch(console.error);
       }

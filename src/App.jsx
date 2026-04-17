@@ -24,70 +24,41 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
-interface BotStatus {
-  status: string;
-  guilds: number;
-  users: number;
-  uptime: number;
-  tag: string;
-}
-
-interface Stats {
-  totalUsers: number;
-  topLevels: Array<{ userId: string; level: number; xp: number }>;
-  openTickets: number;
-}
-
-interface Guild {
-  id: string;
-  name: string;
-  icon: string | null;
-  memberCount: number;
-  invite: string | null;
-}
-
-interface User {
-  id: string;
-  username: string;
-  avatar: string | null;
-  guilds: string[];
-}
-
 export default function App() {
-  const [status, setStatus] = useState<BotStatus | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [guilds, setGuilds] = useState<Guild[]>([]);
-  const [user, setUser] = useState<User | null>(null);
+  const [status, setStatus] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [guilds, setGuilds] = useState([]);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Overview');
-  const [protection, setProtection] = useState<any>(null);
-  const [welcome, setWelcome] = useState<any>(null);
-  const [autoRoles, setAutoRoles] = useState<string[]>([]);
-  const [badwords, setBadwords] = useState<string[]>([]);
-  const [aliases, setAliases] = useState<Array<{ aliasName: string, originalCommand: string }>>([]);
-  const [guildRoles, setGuildRoles] = useState<Array<{ id: string, name: string, color: string }>>([]);
-  const [guildStats, setGuildStats] = useState<Stats | null>(null);
-  const [channels, setChannels] = useState<Array<{ id: string, name: string }>>([]);
-  const [selectedGuildId, setSelectedGuildId] = useState<string | null>(null);
+  const [protection, setProtection] = useState(null);
+  const [welcome, setWelcome] = useState(null);
+  const [autoRoles, setAutoRoles] = useState([]);
+  const [badwords, setBadwords] = useState([]);
+  const [aliases, setAliases] = useState([]);
+  const [guildRoles, setGuildRoles] = useState([]);
+  const [guildStats, setGuildStats] = useState(null);
+  const [channels, setChannels] = useState([]);
+  const [selectedGuildId, setSelectedGuildId] = useState(null);
   const [isSelectingServer, setIsSelectingServer] = useState(true);
   const [newAlias, setNewAlias] = useState({ name: '', original: '' });
-  const [customLists, setCustomLists] = useState<Array<{ id: number, title: string, content: string[] }>>([]);
+  const [customLists, setCustomLists] = useState([]);
   const [newListName, setNewListName] = useState('');
   const [newListContent, setNewListContent] = useState('');
-  const [ticketCategories, setTicketCategories] = useState<Array<{ guildId: string, categoryName: string, roleId: string }>>([]);
+  const [ticketCategories, setTicketCategories] = useState([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiImageUrl, setAiImageUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [logging, setLogging] = useState<any>(null);
-  const [whitelistedBots, setWhitelistedBots] = useState<any[]>([]);
+  const [logging, setLogging] = useState(null);
+  const [whitelistedBots, setWhitelistedBots] = useState([]);
   const [newBotId, setNewBotId] = useState('');
-  const [backups, setBackups] = useState<any[]>([]);
+  const [backups, setBackups] = useState([]);
   const [isBackingUp, setIsBackingUp] = useState(false);
-  const [isRestoring, setIsRestoring] = useState<number | null>(null);
+  const [isRestoring, setIsRestoring] = useState(null);
 
-  const [guildRolesFull, setGuildRolesFull] = useState<any[]>([]);
+  const [guildRolesFull, setGuildRolesFull] = useState([]);
   const [newRole, setNewRole] = useState({ name: '', color: '#99AAB5' });
 
   const fetchData = async () => {
@@ -124,7 +95,7 @@ export default function App() {
     }
   };
 
-  const fetchProtection = async (guildId: string) => {
+  const fetchProtection = async (guildId) => {
     const [protRes, chanRes] = await Promise.all([
       fetch(`/api/guilds/${guildId}/protection`),
       fetch(`/api/guilds/${guildId}/channels`)
@@ -133,7 +104,7 @@ export default function App() {
     if (chanRes.ok) setChannels(await chanRes.json());
   };
 
-  const fetchGuildSettings = async (guildId: string) => {
+  const fetchGuildSettings = async (guildId) => {
     const [welcomeRes, autoRolesRes, badwordsRes, rolesRes, aliasesRes, statsRes] = await Promise.all([
       fetch(`/api/guilds/${guildId}/welcome`),
       fetch(`/api/guilds/${guildId}/auto-roles`),
@@ -509,7 +480,7 @@ export default function App() {
                     },
                     body: JSON.stringify({ ...protection, antiLink: protection.antiLink === 1 ? 0 : 1 })
                   });
-                  fetchProtection(selectedGuildId!);
+                  fetchProtection(selectedGuildId);
                 }}
               />
               <ProtectionCard 
@@ -525,7 +496,7 @@ export default function App() {
                     },
                     body: JSON.stringify({ ...protection, antiSpam: protection.antiSpam === 1 ? 0 : 1 })
                   });
-                  fetchProtection(selectedGuildId!);
+                  fetchProtection(selectedGuildId);
                 }}
               />
               <ProtectionCard 
@@ -541,7 +512,7 @@ export default function App() {
                     },
                     body: JSON.stringify({ ...protection, antiRaid: protection.antiRaid === 1 ? 0 : 1 })
                   });
-                  fetchProtection(selectedGuildId!);
+                  fetchProtection(selectedGuildId);
                 }}
               />
               <ProtectionCard 
@@ -557,7 +528,7 @@ export default function App() {
                     },
                     body: JSON.stringify({ ...protection, antiBot: protection.antiBot === 1 ? 0 : 1 })
                   });
-                  fetchProtection(selectedGuildId!);
+                  fetchProtection(selectedGuildId);
                 }}
               />
               <ProtectionCard 
@@ -573,7 +544,7 @@ export default function App() {
                     },
                     body: JSON.stringify({ ...protection, antiChannelControl: protection.antiChannelControl === 1 ? 0 : 1 })
                   });
-                  fetchProtection(selectedGuildId!);
+                  fetchProtection(selectedGuildId);
                 }}
               />
               <ProtectionCard 
@@ -589,7 +560,7 @@ export default function App() {
                     },
                     body: JSON.stringify({ ...protection, antiRoleControl: protection.antiRoleControl === 1 ? 0 : 1 })
                   });
-                  fetchProtection(selectedGuildId!);
+                  fetchProtection(selectedGuildId);
                 }}
               />
               <ProtectionCard 
@@ -605,7 +576,7 @@ export default function App() {
                     },
                     body: JSON.stringify({ ...protection, antiNuke: protection.antiNuke === 1 ? 0 : 1 })
                   });
-                  fetchProtection(selectedGuildId!);
+                  fetchProtection(selectedGuildId);
                 }}
               />
             </div>
@@ -629,7 +600,7 @@ export default function App() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ...protection, nukeLimit: limit })
                       });
-                      fetchProtection(selectedGuildId!);
+                      fetchProtection(selectedGuildId);
                     }}
                     className="flex-1 h-2 bg-white/5 rounded-lg appearance-none cursor-pointer accent-yellow-500"
                   />
@@ -659,7 +630,7 @@ export default function App() {
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ ...protection, counterNuke: protection.counterNuke === 1 ? 0 : 1 })
                         });
-                        fetchProtection(selectedGuildId!);
+                        fetchProtection(selectedGuildId);
                       }}
                       className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                         protection?.counterNuke === 1 
@@ -755,7 +726,7 @@ export default function App() {
                         },
                         body: JSON.stringify({ ...protection, logChannel: newLogChannel })
                       });
-                      fetchProtection(selectedGuildId!);
+                      fetchProtection(selectedGuildId);
                     }}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
                   >
@@ -1175,7 +1146,7 @@ export default function App() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ...welcome, channelId: e.target.value || null })
                       });
-                      fetchGuildSettings(selectedGuildId!);
+                      fetchGuildSettings(selectedGuildId);
                     }}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500/50 transition-all"
                   >
@@ -1217,7 +1188,7 @@ export default function App() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ...welcome, dmEnabled: newDmEnabled })
                       });
-                      fetchGuildSettings(selectedGuildId!);
+                      fetchGuildSettings(selectedGuildId);
                     }}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${welcome?.dmEnabled === 1 ? 'bg-blue-500' : 'bg-zinc-700'}`}
                   >
@@ -1270,7 +1241,7 @@ export default function App() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ roleIds: newRoles })
                       });
-                      fetchGuildSettings(selectedGuildId!);
+                      fetchGuildSettings(selectedGuildId);
                     }}
                     className={`p-4 rounded-xl border transition-all text-left flex items-center justify-between ${
                       autoRoles.includes(role.id)
@@ -1315,7 +1286,7 @@ export default function App() {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ words: newWords })
                           });
-                          fetchGuildSettings(selectedGuildId!);
+                          fetchGuildSettings(selectedGuildId);
                           input.value = '';
                         }
                       }
@@ -1336,7 +1307,7 @@ export default function App() {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ words: newWords })
                           });
-                          fetchGuildSettings(selectedGuildId!);
+                          fetchGuildSettings(selectedGuildId);
                         }}
                         className="hover:text-white transition-colors"
                       >
@@ -1412,7 +1383,7 @@ export default function App() {
                           body: JSON.stringify({ aliasName: newAlias.name, originalCommand: newAlias.original })
                         });
                         if (res.ok) {
-                          fetchGuildSettings(selectedGuildId!);
+                          fetchGuildSettings(selectedGuildId);
                           setNewAlias({ name: '', original: '' });
                         }
                       }}
@@ -1447,7 +1418,7 @@ export default function App() {
                             await fetch(`/api/guilds/${selectedGuildId}/aliases/${alias.aliasName}`, {
                               method: 'DELETE'
                             });
-                            fetchGuildSettings(selectedGuildId!);
+                            fetchGuildSettings(selectedGuildId);
                           }}
                           className="p-2 text-zinc-700 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                         >
@@ -1943,7 +1914,7 @@ export default function App() {
   );
 }
 
-function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void }) {
+function NavItem({ icon, label, active = false, onClick }) {
   return (
     <button 
       onClick={onClick}
@@ -1958,7 +1929,7 @@ function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNo
   );
 }
 
-function StatCard({ icon, label, value, trend }: { icon: React.ReactNode, label: string, value: string | number, trend: string }) {
+function StatCard({ icon, label, value, trend }) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -1979,7 +1950,7 @@ function StatCard({ icon, label, value, trend }: { icon: React.ReactNode, label:
   );
 }
 
-function CommandItem({ cmd, desc }: { cmd: string, desc: string }) {
+function CommandItem({ cmd, desc }) {
   return (
     <div className="p-3 bg-white/[0.02] rounded-lg border border-white/5 flex items-center justify-between">
       <code className="text-blue-400 text-sm">{cmd}</code>
@@ -1988,13 +1959,7 @@ function CommandItem({ cmd, desc }: { cmd: string, desc: string }) {
   );
 }
 
-function ProtectionCard({ icon, title, description, enabled, onToggle }: { 
-  icon: React.ReactNode, 
-  title: string, 
-  description: string, 
-  enabled: boolean, 
-  onToggle: () => void 
-}) {
+function ProtectionCard({ icon, title, description, enabled, onToggle }) {
   return (
     <div className="p-6 bg-[#0d0d0d] border border-white/5 rounded-2xl hover:border-white/10 transition-all">
       <div className="flex items-center justify-between mb-4">
@@ -2014,7 +1979,7 @@ function ProtectionCard({ icon, title, description, enabled, onToggle }: {
   );
 }
 
-function LoggingChannelSelect({ label, value, channels, onChange }: { label: string, value: string | null, channels: any[], onChange: (val: string) => void }) {
+function LoggingChannelSelect({ label, value, channels, onChange }) {
   return (
     <div className="flex flex-col gap-2 p-4 bg-white/5 border border-white/10 rounded-xl hover:border-blue-500/30 transition-all">
       <label className="text-sm font-medium text-zinc-400">{label}</label>
@@ -2031,7 +1996,7 @@ function LoggingChannelSelect({ label, value, channels, onChange }: { label: str
   );
 }
 
-function LoggingToggle({ label, enabled, onToggle }: { label: string, enabled: boolean, onToggle: () => void }) {
+function LoggingToggle({ label, enabled, onToggle }) {
   return (
     <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5 flex items-center justify-between hover:border-white/10 transition-all">
       <span className="text-zinc-300 font-medium">{label}</span>
