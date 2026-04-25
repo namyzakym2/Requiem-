@@ -73,6 +73,13 @@ export default function App() {
       
       if (statusRes.ok) setStatus(await statusRes.json());
       if (statsRes.ok) setStats(await statsRes.json());
+      if (guildsRes.status === 503) {
+        const errData = await guildsRes.json();
+        console.warn("Bot is starting up:", errData.error);
+        setGuilds([]);
+        return;
+      }
+
       if (guildsRes.ok) {
         const guildsData = await guildsRes.json();
         setGuilds(guildsData);
@@ -208,15 +215,25 @@ export default function App() {
 
           {userAdminGuilds.length === 0 && (
             <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
-              <p className="text-zinc-500 mb-4">No servers found where you have permissions.</p>
-              <a 
-                href={`https://discord.com/api/oauth2/authorize?client_id=${status?.tag.split('#')[0]}&permissions=8&scope=bot%20applications.commands`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-500 font-bold hover:underline"
-              >
-                Invite Bot to a Server
-              </a>
+              {status?.status === 'starting' ? (
+                <>
+                  <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-zinc-400 font-bold mb-2">البوت قيد التشغيل...</p>
+                  <p className="text-zinc-500 text-sm">يتم الآن الاتصال بـ Discord وتحميل البيانات.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-zinc-500 mb-4">لم يتم العثور على سيرفرات يمتلك البوت صلاحيات فيها.</p>
+                  <a 
+                    href={`https://discord.com/api/oauth2/authorize?client_id=${status?.clientId || ''}&permissions=8&scope=bot%20applications.commands`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-500 font-bold hover:underline"
+                  >
+                    أضف البوت إلى سيرفرك
+                  </a>
+                </>
+              )}
             </div>
           )}
         </motion.div>

