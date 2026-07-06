@@ -285,18 +285,33 @@ client.on("messageCreate", async (message) => {
     const lowerContent = message.content.toLowerCase();
     const lowerPrefix = currentPrefix.toLowerCase();
 
-    if (!lowerContent.startsWith(lowerPrefix)) {
+    let commandName = "";
+    let args = [];
+
+    if (lowerContent.startsWith(lowerPrefix)) {
+      args = message.content.slice(lowerPrefix.length).trim().split(/ +/);
+      const firstWord = args.shift()?.toLowerCase();
+      if (firstWord) {
+        const alias = db.prepare("SELECT originalCommand FROM aliases WHERE guildId = ? AND aliasName = ?").get(guildId, firstWord);
+        commandName = alias ? alias.originalCommand : firstWord;
+      }
+    } else {
+      // Check for alias without prefix
+      const firstWord = message.content.trim().split(/ +/)[0]?.toLowerCase();
+      if (firstWord) {
+        const alias = db.prepare("SELECT originalCommand FROM aliases WHERE guildId = ? AND aliasName = ?").get(guildId, firstWord);
+        if (alias) {
+          commandName = alias.originalCommand;
+          args = message.content.trim().split(/ +/).slice(1);
+        }
+      }
+    }
+
+    if (!commandName) {
       const xpToAdd = Math.floor(Math.random() * 10) + 5;
       await addXP(message.author.id, guildId, xpToAdd, message.guild, message.author, message.member, message.channel);
       return;
     }
-
-    const args = message.content.slice(lowerPrefix.length).trim().split(/ +/);
-    const firstWord = args.shift()?.toLowerCase();
-
-    if (firstWord) {
-      const alias = db.prepare("SELECT originalCommand FROM aliases WHERE guildId = ? AND aliasName = ?").get(guildId, firstWord);
-      const commandName = alias ? alias.originalCommand : firstWord;
 
       if (!message.member?.permissions.has(PermissionFlagsBits.Administrator) && !isCommandAllowed(guildId, commandName, message.channelId)) {
         return;
