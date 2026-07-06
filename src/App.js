@@ -18,6 +18,7 @@ import AiTab from './components/tabs/AiTab';
 import AzkarTab from './components/tabs/AzkarTab';
 import BloxFruitsTab from './components/tabs/BloxFruitsTab';
 import RolesTab from './components/tabs/RolesTab';
+import BroadcastTab from './components/tabs/BroadcastTab';
 import { Loader2, Bot } from 'lucide-react';
 
 // Attach Axios Request Interceptor for Bearer Token
@@ -203,6 +204,10 @@ export default function App() {
 
           {activeTab === 'Roles' && (
             <RolesTab guild={selectedGuild} onSave={showToast} lang={lang} />
+          )}
+
+          {activeTab === 'Broadcast' && (
+            <BroadcastTab guild={selectedGuild} onSave={showToast} lang={lang} />
           )}
 
         </main>

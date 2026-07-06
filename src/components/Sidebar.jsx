@@ -14,7 +14,8 @@ import {
   Sliders, 
   Flame,
   ChevronRight,
-  Bot
+  Bot,
+  Radio
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobileOpen, lang }) {
@@ -43,6 +44,7 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
         { id: 'Leveling', labelAr: 'اللفل والخبرة', labelEn: 'Leveling & XP', icon: Flame, badge: 'XP' },
         { id: 'Tickets', labelAr: 'نظام التذاكر', labelEn: 'Tickets', icon: Ticket },
         { id: 'Azkar', labelAr: 'الأذكار والردود', labelEn: 'Azkar & Auto-Reply', icon: Clock },
+        { id: 'Broadcast', labelAr: 'البرودكاست والمالتي كاست', labelEn: 'Broadcast & Multicast', icon: Radio, badge: 'Live' },
       ]
     },
     {

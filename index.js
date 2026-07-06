@@ -27,13 +27,14 @@ import {
   TextInputBuilder,
   TextInputStyle
 } from "discord.js";
-import { createCanvas, loadImage } from "canvas";
+import { Canvas, createCanvas, loadImage } from "canvas";
 import GIFEncoder from "gif-encoder-2";
 import db from "./src/lib/db.js";
 import dotenv from "dotenv";
 import { config } from "./config.js";
 import path from "path";
 import { loadCommands } from "./src/lib/commandLoader.js";
+import botManager from "./src/lib/botManager.js";
 
 dotenv.config();
 
@@ -59,7 +60,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-const PREFIX = "Xb";
+const PREFIX = "#";
 
 const spamMap = new Map();
 const raidMap = new Map();
@@ -248,14 +249,14 @@ client.on("ready", async () => {
     console.log("Started refreshing application (/) commands.");
     if (client.application) {
       await client.application.commands.set(slashCommandsData);
-      console.log("Successfully reloaded global application (/) commands.");
+      console.log(`Successfully reloaded ${slashCommandsData.length} global application (/) commands.`);
     }
     for (const guild of client.guilds.cache.values()) {
       try {
-        await guild.commands.set(slashCommandsData);
-        console.log(`Successfully reloaded commands for guild: ${guild.name} (${guild.id})`);
+        await guild.commands.set([]);
+        console.log(`Successfully cleared duplicate guild commands for: ${guild.name} (${guild.id})`);
       } catch (err) {
-        console.error(`Failed to set commands for guild ${guild.id}:`, err);
+        console.error(`Failed to clear guild commands for ${guild.id}:`, err);
       }
     }
   } catch (err) {
@@ -269,9 +270,9 @@ client.on("messageCreate", async (message) => {
     const guildId = message.guild.id;
 
     // Bad words protection
-    const badwordsRow = db.prepare("SELECT words FROM badwords WHERE guildId = ?").get(guildId);
-    if (badwordsRow?.words) {
-      const words = badwordsRow.words.split(",").map(w => w.trim().toLowerCase());
+    const badwordsRows = db.prepare("SELECT word FROM badwords WHERE guildId = ?").all(guildId);
+    if (badwordsRows && badwordsRows.length > 0) {
+      const words = badwordsRows.map(r => r.word.trim().toLowerCase()).filter(Boolean);
       const content = message.content.toLowerCase();
       if (words.some(w => w && content.includes(w))) {
         await message.delete().catch(() => {});
@@ -309,9 +310,13 @@ client.on("messageCreate", async (message) => {
       };
 
       const command = client.commands?.get(commandName);
-      if (command && typeof command.executeMessage === 'function') {
+      if (command) {
         try {
-          await command.executeMessage(message, args, context);
+          if (typeof command.executeMessage === 'function') {
+            await command.executeMessage(message, args, context);
+          } else if (typeof command.execute === 'function') {
+            await command.execute(message, args, context);
+          }
         } catch (err) {
           console.error(`Error executing prefix command ${commandName}:`, err);
           message.reply("❌ حدث خطأ أثناء تنفيذ هذا الأمر.").catch(() => {});
@@ -358,9 +363,13 @@ client.on("interactionCreate", async (interaction) => {
       }
 
       const command = client.commands?.get(commandName);
-      if (command && typeof command.executeInteraction === 'function') {
+      if (command) {
         try {
-          await command.executeInteraction(interaction, context);
+          if (typeof command.executeInteraction === 'function') {
+            await command.executeInteraction(interaction, context);
+          } else if (typeof command.execute === 'function') {
+            await command.execute(interaction, context);
+          }
         } catch (err) {
           console.error(`Error executing slash command ${commandName}:`, err);
           if (interaction.replied || interaction.deferred) {
@@ -371,6 +380,41 @@ client.on("interactionCreate", async (interaction) => {
         }
       }
       return;
+    }
+
+    if (interaction.isButton()) {
+      const { customId, user, guildId } = interaction;
+      if (customId === "bc_subscribe_btn") {
+        const COST = 10000000;
+        const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(user.id, guildId);
+        const balance = userRow?.xb || 0;
+        if (balance < COST) {
+          return interaction.reply({ content: `❌ رصيدك غير كافٍ. التكلفة: **10,000,000 XB**. رصيدك الحالي: **${balance.toLocaleString('ar-EG')} XB**.`, ephemeral: true });
+        }
+        db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(COST, user.id, guildId);
+        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        db.prepare("INSERT OR REPLACE INTO broadcast_subscriptions (userId, expiresAt) VALUES (?, ?)").run(user.id, expires);
+        return interaction.reply({ content: "🎉 تم الاشتراك بنجاح في خدمة البرودكاست والمالتي كاست لمدة 30 يوماً!", ephemeral: true });
+      }
+
+      if (customId === "bc_addbot_btn") {
+        return interaction.reply({ content: "ℹ️ لإضافة بوت، استخدم الأمر: `/bc-control addbot name:<الاسم> webhook:<الرابط>` أو `bc addbot <الاسم> <الرابط>`", ephemeral: true });
+      }
+
+      if (customId === "bc_send_online_btn") {
+        await interaction.deferReply({ ephemeral: true });
+        const settings = db.prepare("SELECT message FROM broadcast_settings WHERE guildId = ?").get(guildId);
+        const msg = settings?.message || "مرحباً {user}!";
+        const members = await interaction.guild.members.fetch({ withPresences: true }).catch(() => interaction.guild.members.cache);
+        const onlineMembers = members.filter(m => !m.user.bot && (m.presence?.status === 'online' || m.presence?.status === 'dnd' || m.presence?.status === 'idle'));
+        let sent = 0;
+        for (const [id, member] of onlineMembers) {
+          const text = msg.replace(/{user}/g, `<@${member.id}>`);
+          await member.send(text).then(() => sent++).catch(() => {});
+          await new Promise(r => setTimeout(r, 800));
+        }
+        return interaction.editReply(`✅ تم إرسال البرودكاست إلى **${sent}** عضواً متصلاً.`);
+      }
     }
   } catch (err) {
     console.error("Error in interactionCreate handler:", err);
@@ -1272,7 +1316,7 @@ function setupDashboardRoutes(app, context) {
     try {
       const { guildId } = req.params;
       const prefixRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`prefix_${guildId}`);
-      const prefix = prefixRow ? prefixRow.value : "Xb";
+      const prefix = prefixRow ? prefixRow.value : "#";
       res.json({ prefix });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -1444,6 +1488,72 @@ function setupDashboardRoutes(app, context) {
     res.json({ success: true });
   });
 
+  // Global Multicast Broadcast Manager Endpoints
+  app.get("/api/broadcast/status", (req, res) => {
+    res.json({
+      status: botManager.status,
+      currentBroadcast: botManager.currentBroadcast,
+      activeBotsCount: botManager.getActiveBots().length,
+      totalBotsCount: botManager.getAllBots().length
+    });
+  });
+
+  app.post("/api/broadcast/start", express.json(), async (req, res) => {
+    try {
+      const { message, totalTarget, guildId, speedMode, targetType } = req.body;
+      const broadcast = await botManager.startBroadcast(
+        message || "مرحباً بكم!",
+        totalTarget || 100,
+        guildId || null,
+        { speedMode, targetType }
+      );
+      res.json({ success: true, broadcast });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/broadcast/stop", (req, res) => {
+    botManager.stopBroadcast();
+    res.json({ success: true, status: botManager.status });
+  });
+
+  app.post("/api/broadcast/reset", (req, res) => {
+    try {
+      botManager.resetStats();
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/broadcast/tokens", (req, res) => {
+    res.json(botManager.getAllBots());
+  });
+
+  app.post("/api/broadcast/tokens", express.json(), async (req, res) => {
+    try {
+      const { token } = req.body;
+      const result = await botManager.addBot(token);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/broadcast/tokens/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const row = db.prepare("SELECT token FROM bots WHERE id = ?").get(id);
+      if (row) {
+        await botManager.removeBotClient(row.token);
+      }
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.use("/api/*", (req, res) => {
     res.status(404).json({ error: "API route not found" });
   });
@@ -1475,7 +1585,7 @@ async function startServer() {
       app.use(vite.middlewares);
     } catch (viteError) {
       console.error("Vite server creation failed. Falling back to static serving.", viteError);
-      const distPath = path.resolve(process.cwd(), "dashboard");
+      const distPath = path.resolve(process.cwd(), "dist");
       if (fs.existsSync(distPath)) {
         app.use(express.static(distPath));
         app.get("*", (req, res) => {
@@ -1484,7 +1594,7 @@ async function startServer() {
       }
     }
   } else {
-    const distPath = path.resolve(process.cwd(), "dashboard");
+    const distPath = path.resolve(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.resolve(distPath, "index.html"));

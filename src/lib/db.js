@@ -345,6 +345,49 @@ function runMigrations(db) {
       guildId TEXT PRIMARY KEY,
       message TEXT DEFAULT 'Hello {user}!'
     );
+
+    CREATE TABLE IF NOT EXISTS bots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT UNIQUE,
+      username TEXT,
+      clientId TEXT,
+      inviteLink TEXT,
+      status TEXT DEFAULT 'offline',
+      messagesSent INTEGER DEFAULT 0,
+      successCount INTEGER DEFAULT 0,
+      failCount INTEGER DEFAULT 0,
+      lastUsed TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS recipients (
+      userId TEXT PRIMARY KEY,
+      lastSentAt TEXT,
+      sentCount INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      userId TEXT PRIMARY KEY,
+      token TEXT,
+      tokens TEXT DEFAULT '[]',
+      expiresAt TEXT,
+      status TEXT DEFAULT 'inactive',
+      successCount INTEGER DEFAULT 0,
+      failCount INTEGER DEFAULT 0,
+      password TEXT,
+      tier TEXT DEFAULT 'bronze',
+      maxSends INTEGER DEFAULT 1000,
+      currentMonthSends INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS scheduled_broadcasts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId TEXT,
+      message TEXT,
+      guildId TEXT,
+      targetType TEXT DEFAULT 'all',
+      scheduledTime TEXT,
+      status TEXT DEFAULT 'pending'
+    );
   `);
 
   try {

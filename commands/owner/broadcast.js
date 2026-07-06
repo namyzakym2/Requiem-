@@ -3,80 +3,77 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 export default {
   name: "broadcast",
   category: "owner",
-  data: new SlashCommandBuilder().setName("broadcast").setDescription("إرسال رسالة برودكاست لجميع أعضاء سيرفر معين").addStringOption((opt) => opt.setName("server_id").setDescription("ID السيرفر").setRequired(true)).addStringOption((opt) => opt.setName("message").setDescription("الرسالة المراد إرسالها").setRequired(true)),
+  data: new SlashCommandBuilder()
+    .setName("broadcast")
+    .setDescription("إرسال رسالة برودكاست")
+    .addSubcommand(sub => 
+      sub.setName("server")
+         .setDescription("إرسال رسالة برودكاست لجميع أعضاء سيرفر معين")
+         .addStringOption((opt) => opt.setName("server_id").setDescription("ID السيرفر").setRequired(true))
+         .addStringOption((opt) => opt.setName("message").setDescription("الرسالة المراد إرسالها (استخدم {user} للمنشة)").setRequired(true))
+    )
+    .addSubcommand(sub => 
+      sub.setName("all")
+         .setDescription("إرسال رسالة لجميع الأعضاء في كل السيرفرات")
+         .addStringOption((opt) => opt.setName("message").setDescription("الرسالة المراد إرسالها (استخدم {user} للمنشة)").setRequired(true))
+    )
+    .addSubcommand(sub => 
+      sub.setName("online")
+         .setDescription("إرسال رسالة للأعضاء المتصلين في كل السيرفرات")
+         .addStringOption((opt) => opt.setName("message").setDescription("الرسالة المراد إرسالها (استخدم {user} للمنشة)").setRequired(true))
+    ),
   async executeInteraction(interaction, context) {
     const {
-      client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
-      OWNER_ID, OWNER_USERNAME, PREFIX, logEvent, logCurrencyTransaction,
-      isCommandAllowed, cooldowns, evaluationStates, mafiaGames, activeGames,
-      pendingTransfers, lastAzkarSent, spamMap, raidMap
+      client, OWNER_ID
     } = context;
 
-    let { commandName, user, guildId, guild, channel } = interaction;
-    if (commandName === "broadcast") {
-        if (interaction.user.id !== OWNER_ID) {
-          return interaction.reply({ content: "Owner only.", ephemeral: true });
-        }
+    if (interaction.user.id !== OWNER_ID) {
+      return interaction.reply({ content: "Owner only.", ephemeral: true });
+    }
+
+    const subCommand = interaction.options.getSubcommand();
+    const broadcastMessage = interaction.options.getString("message");
+    
+    await interaction.deferReply({ ephemeral: true });
+
+    let targets = [];
+
+    if (subCommand === 'server') {
         const targetGuildId = interaction.options.getString("server_id");
-        const broadcastMessage = interaction.options.getString("message");
         const targetGuild = client.guilds.cache.get(targetGuildId);
-        if (!targetGuild) {
-          return interaction.reply({ content: `❌ البوت ليس عضواً في هذا السيرفر (${targetGuildId}).`, ephemeral: true });
-        }
-        const targetBotMember = targetGuild.members.me;
-        if (!targetBotMember?.permissions.has(PermissionFlagsBits.Administrator)) {
-          return interaction.reply({ content: `❌ البوت يفتقر إلى صلاحية 'Administrator' في السيرفر المستهدف: **${targetGuild.name}**.`, ephemeral: true });
-        }
-        await interaction.deferReply();
-        await interaction.editReply(`⏳ جاري بدء إرسال البرودكاست إلى أعضاء سيرفر **${targetGuild.name}**... (قد يستغرق الأمر وقتاً طويلاً لتجنب الحظر)`);
-        try {
-          console.log(`[BROADCAST] Starting broadcast for guild: ${targetGuild.name} (${targetGuild.id})`);
-          let members;
-          try {
-            console.log(`[BROADCAST] Attempting to fetch members for ${targetGuild.name}...`);
-            members = await targetGuild.members.fetch({ withPresences: false, time: 6e4 }).catch((err) => {
-              if (err.code === 50013) {
-                console.warn(`[BROADCAST] Missing Permissions to fetch members for ${targetGuild.name}`);
-              } else {
-                console.warn(`[BROADCAST] Member fetch failed for ${targetGuild.name}: ${err.message}. Using cache.`);
-              }
-              return targetGuild.members.cache;
-            });
-          } catch (err) {
-            console.error(`[BROADCAST] Critical error during fetch for ${targetGuild.name}:`, err);
-            members = targetGuild.members.cache;
-          }
-          if (!members || members.size === 0) {
-            console.warn(`[BROADCAST] No members found for ${targetGuild.name} (Cache size: ${targetGuild.members.cache.size})`);
-            return interaction.followUp("❌ لم يتم العثور على أعضاء لإرسال الرسائل إليهم. تأكد من تفعيل 'Server Members Intent' في Discord Developer Portal.");
-          }
-          console.log(`[BROADCAST] Found ${members.size} members. Starting DM loop...`);
-          let successCount = 0;
-          let failCount = 0;
-          for (const [id, member] of members) {
-            if (member.user.bot) continue;
-            try {
-              await member.send(broadcastMessage);
-              successCount++;
-              if (successCount % 5 === 0) console.log(`[BROADCAST] Successfully sent ${successCount} messages...`);
-            } catch (err) {
-              failCount++;
-              if (err instanceof Error && !err.message.includes("Cannot send messages to this user")) {
-                console.error(`[BROADCAST] Failed to send DM to ${member.user.tag}:`, err.message);
-              }
+        if (!targetGuild) return interaction.editReply(`❌ البوت ليس عضواً في هذا السيرفر.`);
+        targets = Array.from((await targetGuild.members.fetch()).values());
+    } else {
+        // all or online
+        for (const [_, guild] of client.guilds.cache) {
+            const members = await guild.members.fetch({ withPresences: subCommand === 'online' });
+            for (const [_, member] of members) {
+                if (member.user.bot) continue;
+                if (subCommand === 'online' && member.presence?.status !== 'online') continue;
+                targets.push(member);
             }
-            await new Promise((resolve) => setTimeout(resolve, 3e3));
-          }
-          console.log(`[BROADCAST] Completed. Success: ${successCount}, Failed: ${failCount}`);
-          await interaction.followUp(`✅ اكتمل البرودكاست!
-- تم الإرسال لـ: **${successCount}**
-- فشل الإرسال لـ: **${failCount}** (غالباً بسبب إغلاق الخاص)`);
-        } catch (err) {
-          console.error("Broadcast error:", err);
-          await interaction.followUp("❌ حدث خطأ أثناء جلب الأعضاء أو إرسال الرسائل.");
         }
-      }
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const member of targets) {
+        try {
+            const message = broadcastMessage.replace(/{user}/g, `<@${member.id}>`);
+            await member.send(message);
+            successCount++;
+        } catch (err) {
+            failCount++;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    await interaction.editReply(`✅ اكتمل البرودكاست!
+- تم الإرسال لـ: **${successCount}**
+- فشل الإرسال لـ: **${failCount}**`);
   },
+
   async executeMessage(message, args, context) {
     const {
       client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
