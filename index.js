@@ -337,7 +337,6 @@ client.on("messageCreate", async (message) => {
           message.reply("❌ حدث خطأ أثناء تنفيذ هذا الأمر.").catch(() => {});
         }
       }
-    }
   } catch (err) {
     console.error("Error in messageCreate handler:", err);
   }

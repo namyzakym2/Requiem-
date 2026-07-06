@@ -306,7 +306,7 @@ class BotManager {
             .replace(/{username}/g, member.user.username)
             .replace(/{server}/g, member.guild?.name || "Server");
 
-          await member.send({ content: parsedMessage, allowedMentions: { parse: [] } });
+          await member.send({ content: parsedMessage, allowedMentions: { parse: ['users'] } });
 
           sentCount++;
           botSentThisRound++;

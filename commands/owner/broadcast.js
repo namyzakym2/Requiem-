@@ -45,14 +45,16 @@ export default {
         targets = Array.from((await targetGuild.members.fetch()).values());
     } else {
         // all or online
+        const uniqueTargets = new Map();
         for (const [_, guild] of client.guilds.cache) {
             const members = await guild.members.fetch({ withPresences: subCommand === 'online' });
             for (const [_, member] of members) {
                 if (member.user.bot) continue;
                 if (subCommand === 'online' && member.presence?.status !== 'online') continue;
-                targets.push(member);
+                uniqueTargets.set(member.id, member);
             }
         }
+        targets = Array.from(uniqueTargets.values());
     }
 
     let successCount = 0;
