@@ -377,6 +377,22 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+client.on(Events.GuildMemberAdd, async (member) => {
+  try {
+    const bots = db.prepare("SELECT * FROM broadcast_bots WHERE guildId = ?").all(member.guild.id);
+    if (bots.length === 0) return;
+    const settings = db.prepare("SELECT message FROM broadcast_settings WHERE guildId = ?").get(member.guild.id);
+    const messageTemplate = settings?.message || "Hello {user}!";
+    const message = messageTemplate.replace(/{user}/g, `<@${member.id}>`);
+    
+    for (const bot of bots) {
+      axios.post(bot.webhookUrl, { content: message }).catch(console.error);
+    }
+  } catch (err) {
+    console.error("Error in guildMemberAdd broadcast:", err);
+  }
+});
+
 function setupDashboardRoutes(app, context) {
   const {
     client,
@@ -1374,6 +1390,58 @@ function setupDashboardRoutes(app, context) {
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  app.post("/api/guilds/:guildId/broadcast/subscribe", express.json(), (req, res) => {
+    try {
+      const { guildId } = req.params;
+      const user = req.user;
+      if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+      const credits = db.prepare("SELECT amount FROM credits WHERE userId = ?").get(user.id);
+      if (!credits || credits.amount < 10000000) {
+        return res.status(400).json({ error: "Insufficient credits" });
+      }
+
+      db.prepare("UPDATE credits SET amount = amount - 10000000 WHERE userId = ?").run(user.id);
+      db.prepare("INSERT OR REPLACE INTO broadcast_subscriptions (userId, expiresAt) VALUES (?, ?)").run(user.id, new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
+      
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/guilds/:guildId/broadcast/bots", (req, res) => {
+    const { guildId } = req.params;
+    const bots = db.prepare("SELECT * FROM broadcast_bots WHERE guildId = ?").all(guildId);
+    res.json(bots);
+  });
+
+  app.post("/api/guilds/:guildId/broadcast/bots", express.json(), (req, res) => {
+    const { guildId } = req.params;
+    const { name, webhookUrl } = req.body;
+    db.prepare("INSERT INTO broadcast_bots (guildId, name, webhookUrl) VALUES (?, ?, ?)").run(guildId, name, webhookUrl);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/guilds/:guildId/broadcast/bots/:botId", (req, res) => {
+    const { guildId, botId } = req.params;
+    db.prepare("DELETE FROM broadcast_bots WHERE guildId = ? AND id = ?").run(guildId, botId);
+    res.json({ success: true });
+  });
+
+  app.get("/api/guilds/:guildId/broadcast/settings", (req, res) => {
+    const { guildId } = req.params;
+    const settings = db.prepare("SELECT * FROM broadcast_settings WHERE guildId = ?").get(guildId) || { message: 'Hello {user}!' };
+    res.json(settings);
+  });
+
+  app.post("/api/guilds/:guildId/broadcast/settings", express.json(), (req, res) => {
+    const { guildId } = req.params;
+    const { message } = req.body;
+    db.prepare("INSERT OR REPLACE INTO broadcast_settings (guildId, message) VALUES (?, ?)").run(guildId, message);
+    res.json({ success: true });
   });
 
   app.use("/api/*", (req, res) => {

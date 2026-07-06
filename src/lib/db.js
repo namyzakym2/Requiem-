@@ -328,6 +328,23 @@ function runMigrations(db) {
       data TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS broadcast_subscriptions (
+      userId TEXT PRIMARY KEY,
+      expiresAt DATETIME
+    );
+
+    CREATE TABLE IF NOT EXISTS broadcast_bots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guildId TEXT,
+      webhookUrl TEXT,
+      name TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS broadcast_settings (
+      guildId TEXT PRIMARY KEY,
+      message TEXT DEFAULT 'Hello {user}!'
+    );
   `);
 
   try {
