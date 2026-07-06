@@ -13,13 +13,14 @@ export default defineConfig(({mode}) => {
     plugins: [react(), tailwindcss()],
     esbuild: {
       loader: 'jsx',
-      include: /src\/.*\.js$/,
+      include: /src\/.*\.(js|jsx)$/,
       exclude: [],
     },
     optimizeDeps: {
       esbuildOptions: {
         loader: {
           '.js': 'jsx',
+          '.jsx': 'jsx',
         },
       },
     },
