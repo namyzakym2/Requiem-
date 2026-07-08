@@ -44,7 +44,7 @@ export default {
               db.prepare("INSERT INTO leveling (userId, guildId, xp, level, xb) VALUES (?, ?, 0, 0, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?").run(interaction.user.id, interaction.guildId, xbReward, xbReward);
               const winEmbed = new EmbedBuilder().setTitle("🎉 مبروك!").setDescription(`لقد فزت يا <@${interaction.user.id}>! الكلمة كانت: **${word}**
 
-💰 لقد حصلت على **${xbReward}** XB!`).setColor(65280).setTimestamp();
+💰 لقد حصلت على **${xbReward}** رون!`).setColor(65280).setTimestamp();
               await interaction.followUp({ content: `مبروك للفائز! <@${interaction.user.id}>`, embeds: [winEmbed] });
               collector.stop();
             } else {

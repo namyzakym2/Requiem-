@@ -1,25 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import axios from 'axios';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
 import LoginView from './components/LoginView';
-
-import OverviewTab from './components/tabs/OverviewTab';
-import ProtectionTab from './components/tabs/ProtectionTab';
-import AutoModTab from './components/tabs/AutoModTab';
-import WelcomeTab from './components/tabs/WelcomeTab';
-import LevelingTab from './components/tabs/LevelingTab';
-import TicketsTab from './components/tabs/TicketsTab';
-import LoggingTab from './components/tabs/LoggingTab';
-import AliasesTab from './components/tabs/AliasesTab';
-import BackupsTab from './components/tabs/BackupsTab';
-import AiTab from './components/tabs/AiTab';
-import AzkarTab from './components/tabs/AzkarTab';
-import BloxFruitsTab from './components/tabs/BloxFruitsTab';
-import RolesTab from './components/tabs/RolesTab';
-import BroadcastTab from './components/tabs/BroadcastTab';
 import { Loader2, Bot } from 'lucide-react';
+
+const OverviewTab = lazy(() => import('./components/tabs/OverviewTab'));
+const ProtectionTab = lazy(() => import('./components/tabs/ProtectionTab'));
+const AutoModTab = lazy(() => import('./components/tabs/AutoModTab'));
+const WelcomeTab = lazy(() => import('./components/tabs/WelcomeTab'));
+const LevelingTab = lazy(() => import('./components/tabs/LevelingTab'));
+const TicketsTab = lazy(() => import('./components/tabs/TicketsTab'));
+const LoggingTab = lazy(() => import('./components/tabs/LoggingTab'));
+const AliasesTab = lazy(() => import('./components/tabs/AliasesTab'));
+const BackupsTab = lazy(() => import('./components/tabs/BackupsTab'));
+const AiTab = lazy(() => import('./components/tabs/AiTab'));
+const AzkarTab = lazy(() => import('./components/tabs/AzkarTab'));
+const RolesTab = lazy(() => import('./components/tabs/RolesTab'));
+const BroadcastTab = lazy(() => import('./components/tabs/BroadcastTab'));
+const CommandsTab = lazy(() => import('./components/tabs/CommandsTab'));
+const LogViewer = lazy(() => import('./components/LogViewer'));
 
 // Attach Axios Request Interceptor for Bearer Token
 axios.interceptors.request.use((config) => {
@@ -154,61 +155,67 @@ export default function App() {
         {/* Dynamic Main Workspace Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto min-w-0">
           
-          {activeTab === 'Overview' && (
-            <OverviewTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+          <Suspense fallback={<div className="p-4 text-center text-zinc-500">جاري التحميل...</div>}>
+            {activeTab === 'Overview' && (
+              <OverviewTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Protection' && (
-            <ProtectionTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Protection' && (
+              <ProtectionTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Auto-Mod' && (
-            <AutoModTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Auto-Mod' && (
+              <AutoModTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {(activeTab === 'Welcome' || activeTab === 'Auto-Roles') && (
-            <WelcomeTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {(activeTab === 'Welcome' || activeTab === 'Auto-Roles') && (
+              <WelcomeTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Leveling' && (
-            <LevelingTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Leveling' && (
+              <LevelingTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Tickets' && (
-            <TicketsTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Tickets' && (
+              <TicketsTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Logging' && (
-            <LoggingTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Logging' && (
+              <LoggingTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Aliases' && (
-            <AliasesTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Aliases' && (
+              <AliasesTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Backups' && (
-            <BackupsTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Backups' && (
+              <BackupsTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'AI Generator' && (
-            <AiTab onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'AI Generator' && (
+              <AiTab onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Azkar' && (
-            <AzkarTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Azkar' && (
+              <AzkarTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'BloxFruits' && (
-            <BloxFruitsTab onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Roles' && (
+              <RolesTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Roles' && (
-            <RolesTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Broadcast' && (
+              <BroadcastTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
 
-          {activeTab === 'Broadcast' && (
-            <BroadcastTab guild={selectedGuild} onSave={showToast} lang={lang} />
-          )}
+            {activeTab === 'Commands' && (
+              <CommandsTab onSave={showToast} lang={lang} />
+            )}
+
+            {activeTab === 'Logs' && (
+              <LogViewer />
+            )}
+          </Suspense>
 
         </main>
       </div>

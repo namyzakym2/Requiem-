@@ -7,6 +7,8 @@ import SQLiteStore from "better-sqlite3-session-store";
 import jwt from "jsonwebtoken";
 import { createServer as createViteServer } from "vite";
 import nblox from "noblox.js";
+import fs from "fs";
+import path from "path";
 import {
   Client,
   GatewayIntentBits,
@@ -32,9 +34,10 @@ import GIFEncoder from "gif-encoder-2";
 import db from "./src/lib/db.js";
 import dotenv from "dotenv";
 import { config } from "./config.js";
-import path from "path";
 import { loadCommands } from "./src/lib/commandLoader.js";
 import botManager from "./src/lib/botManager.js";
+import { startMarketEngine } from "./commands/bank/marketEngine.js";
+import { startTaskScheduler } from "./src/lib/taskScheduler.js";
 
 dotenv.config();
 
@@ -60,7 +63,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-const PREFIX = "#";
+const PREFIX = ".";
 
 const spamMap = new Map();
 const raidMap = new Map();
@@ -83,7 +86,7 @@ async function logCurrencyTransaction(guildId, userId, amount, reason, type) {
 
     const embed = new EmbedBuilder()
       .setTitle(`💰 Currency Log: ${type.toUpperCase()}`)
-      .setDescription(`User: <@${userId}>\nAmount: **${amount}** XB\nNew Balance: **${balance}** XB\nReason: ${reason}`)
+      .setDescription(`User: <@${userId}>\nAmount: **${amount}** رون\nNew Balance: **${balance}** رون\nReason: ${reason}`)
       .setColor(type === "add" ? 5763719 : 15548997)
       .setTimestamp();
 
@@ -262,6 +265,7 @@ client.on("ready", async () => {
   } catch (err) {
     console.error("Error loading commands on ready:", err);
   }
+  startTaskScheduler(client);
 });
 
 client.on("messageCreate", async (message) => {
@@ -403,7 +407,7 @@ client.on("interactionCreate", async (interaction) => {
         const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(user.id, guildId);
         const balance = userRow?.xb || 0;
         if (balance < COST) {
-          return interaction.reply({ content: `❌ رصيدك غير كافٍ. التكلفة: **10,000,000 XB**. رصيدك الحالي: **${balance.toLocaleString('ar-EG')} XB**.`, ephemeral: true });
+          return interaction.reply({ content: `❌ رصيدك غير كافٍ. التكلفة: **10,000,000 رون**. رصيدك الحالي: **${balance.toLocaleString('ar-EG')} رون**.`, ephemeral: true });
         }
         db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(COST, user.id, guildId);
         const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -429,9 +433,167 @@ client.on("interactionCreate", async (interaction) => {
         }
         return interaction.editReply(`✅ تم إرسال البرودكاست إلى **${sent}** عضواً متصلاً.`);
       }
+
+      if (customId === "open_ticket") {
+        await interaction.deferReply({ ephemeral: true });
+        
+        // Check if user already has an open ticket in this guild
+        const existingTicket = db.prepare("SELECT * FROM tickets WHERE userId = ? AND status = 'open'").get(user.id);
+        if (existingTicket) {
+          const existingChan = interaction.guild.channels.cache.get(existingTicket.channelId);
+          if (existingChan) {
+            return interaction.editReply({ content: `❌ لديك تذكرة مفتوحة بالفعل هنا: <#${existingTicket.channelId}>` });
+          } else {
+            db.prepare("UPDATE tickets SET status = 'closed' WHERE channelId = ?").run(existingTicket.channelId);
+          }
+        }
+
+        const supportRow = db.prepare("SELECT supportRoleId FROM ticket_settings WHERE guildId = ?").get(guildId);
+        const supportRoleId = supportRow?.supportRoleId;
+
+        const permissionOverwrites = [
+          {
+            id: interaction.guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.ViewChannel],
+          },
+          {
+            id: user.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.ReadMessageHistory],
+          }
+        ];
+
+        if (supportRoleId) {
+          permissionOverwrites.push({
+            id: supportRoleId,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.ReadMessageHistory],
+          });
+        }
+
+        const ticketChannel = await interaction.guild.channels.create({
+          name: `ticket-${user.username}`,
+          type: ChannelType.GuildText,
+          permissionOverwrites,
+        });
+
+        db.prepare("INSERT INTO tickets (userId, channelId, status) VALUES (?, ?, 'open')").run(user.id, ticketChannel.id);
+
+        logEvent(guildId, "interactionCreate", {
+          title: "🎫 Ticket Opened",
+          description: `**User:** <@${user.id}>\n**Channel:** <#${ticketChannel.id}>`,
+          color: 3066993
+        });
+
+        const welcomeEmbed = new EmbedBuilder()
+          .setTitle("🎫 تذكرة دعم جديدة")
+          .setDescription(`أهلاً بك <@${user.id}> في تذكرة الدعم الفني الخاصة بك.\nيرجى طرح استفسارك أو مشكلتك هنا وسيقوم فريق الدعم بالرد عليك في أقرب وقت.`)
+          .setColor(3066993)
+          .setTimestamp();
+
+        const closeButton = new ButtonBuilder()
+          .setCustomId("close_ticket")
+          .setLabel("إغلاق التذكرة")
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji("🔒");
+
+        const welcomeRow = new ActionRowBuilder().addComponents(closeButton);
+
+        await ticketChannel.send({
+          content: `${user} ${supportRoleId ? `<@&${supportRoleId}>` : ""}`,
+          embeds: [welcomeEmbed],
+          components: [welcomeRow]
+        });
+
+        return interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: ${ticketChannel}` });
+      }
+
+      if (customId === "close_ticket") {
+        await interaction.deferReply();
+        
+        const ticket = db.prepare("SELECT * FROM tickets WHERE channelId = ?").get(interaction.channelId);
+        if (ticket) {
+          db.prepare("UPDATE tickets SET status = 'closed' WHERE channelId = ?").run(interaction.channelId);
+        }
+
+        logEvent(guildId, "interactionCreate", {
+          title: "🔒 Ticket Closed",
+          description: `**User:** <@${user.id}>\n**Channel:** #${interaction.channel.name}`,
+          color: 15158332
+        });
+
+        await interaction.editReply({ content: "🔒 سيتم إغلاق التذكرة وحذف القناة خلال 5 ثوانٍ..." });
+        
+        setTimeout(async () => {
+          await interaction.channel.delete().catch(() => {});
+        }, 5000);
+        return;
+      }
     }
   } catch (err) {
     console.error("Error in interactionCreate handler:", err);
+  }
+});
+
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.bot) return;
+  if (reaction.partial) {
+    try {
+      await reaction.fetch();
+    } catch (err) {
+      console.error("Failed to fetch reaction partial:", err);
+      return;
+    }
+  }
+
+  const { message, emoji } = reaction;
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  const emojiName = emoji.id ? `<:${emoji.name}:${emoji.id}>` : emoji.name;
+  const emojiNameAnimated = emoji.id ? `<a:${emoji.name}:${emoji.id}>` : emoji.name;
+
+  try {
+    const rr = db.prepare("SELECT roleId FROM reaction_roles WHERE guildId = ? AND messageId = ? AND (emoji = ? OR emoji = ? OR emoji = ? OR emoji = ?)")
+      .get(guildId, message.id, emojiName, emojiNameAnimated, emoji.name, emoji.id || "");
+    if (rr) {
+      const member = await message.guild.members.fetch(user.id).catch(() => null);
+      if (member) {
+        await member.roles.add(rr.roleId).catch(err => console.error("Failed to add reaction role:", err));
+      }
+    }
+  } catch (err) {
+    console.error("Error in messageReactionAdd:", err);
+  }
+});
+
+client.on("messageReactionRemove", async (reaction, user) => {
+  if (user.bot) return;
+  if (reaction.partial) {
+    try {
+      await reaction.fetch();
+    } catch (err) {
+      console.error("Failed to fetch reaction partial:", err);
+      return;
+    }
+  }
+
+  const { message, emoji } = reaction;
+  const guildId = message.guild?.id;
+  if (!guildId) return;
+
+  const emojiName = emoji.id ? `<:${emoji.name}:${emoji.id}>` : emoji.name;
+  const emojiNameAnimated = emoji.id ? `<a:${emoji.name}:${emoji.id}>` : emoji.name;
+
+  try {
+    const rr = db.prepare("SELECT roleId FROM reaction_roles WHERE guildId = ? AND messageId = ? AND (emoji = ? OR emoji = ? OR emoji = ? OR emoji = ?)")
+      .get(guildId, message.id, emojiName, emojiNameAnimated, emoji.name, emoji.id || "");
+    if (rr) {
+      const member = await message.guild.members.fetch(user.id).catch(() => null);
+      if (member) {
+        await member.roles.remove(rr.roleId).catch(err => console.error("Failed to remove reaction role:", err));
+      }
+    }
+  } catch (err) {
+    console.error("Error in messageReactionRemove:", err);
   }
 });
 
@@ -497,6 +659,24 @@ function setupDashboardRoutes(app, context) {
         hasAppUrl: !!APP_URL
       }
     });
+  });
+
+  app.get("/api/commands", (req, res) => {
+    const commandsPath = path.join(process.cwd(), "commands");
+    const commands = [];
+    if (fs.existsSync(commandsPath)) {
+        fs.readdirSync(commandsPath).forEach(category => {
+            const catPath = path.join(commandsPath, category);
+            if (fs.statSync(catPath).isDirectory()) {
+                fs.readdirSync(catPath).forEach(file => {
+                    if (file.endsWith(".js")) {
+                        commands.push({ name: file.replace(".js", ""), category });
+                    }
+                });
+            }
+        });
+    }
+    res.json(commands);
   });
 
   app.get("/api/status", (req, res) => {
@@ -1330,7 +1510,7 @@ function setupDashboardRoutes(app, context) {
     try {
       const { guildId } = req.params;
       const prefixRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`prefix_${guildId}`);
-      const prefix = prefixRow ? prefixRow.value : "#";
+      const prefix = prefixRow ? prefixRow.value : ".";
       res.json({ prefix });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -1574,12 +1754,18 @@ function setupDashboardRoutes(app, context) {
 }
 
 async function startServer() {
+  startMarketEngine();
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+
+  app.get("/api/logs", (req, res) => {
+    const logs = db.prepare("SELECT * FROM activity_logs ORDER BY createdAt DESC LIMIT 50").all();
+    res.json(logs);
+  });
 
   const context = {
     client, db, OWNER_ID, OWNER_USERNAME, DISCORD_TOKEN, DISCORD_CLIENT_ID,

@@ -13,7 +13,7 @@ export default {
     )
     .addSubcommand(sub =>
       sub.setName("subscribe")
-        .setDescription("الاشتراك في ميزة المالتي كاست مقابل 10,000,000 XB شهرياً")
+        .setDescription("الاشتراك في ميزة المالتي كاست مقابل 10,000,000 رون شهرياً")
     )
     .addSubcommand(sub =>
       sub.setName("online")
@@ -129,14 +129,14 @@ async function sendControlPanel(target, db, guildId, userId, isMsg = false) {
     .setColor(isSubscribed ? "#00FF7F" : "#FF4500")
     .setDescription(`أهلاً بك في غرفة التحكم ببرودكاست البوت والمالتي كاست.`)
     .addFields(
-      { name: "👑 حالة الاشتراك بالخدمة", value: isSubscribed ? `🟢 مفعل (ينتهي في ${new Date(sub.expiresAt).toLocaleDateString('ar-EG')})` : "🔴 غير مفعل (تكلفة الاشتراك: **10,000,000 XB / شهرياً**)", inline: false },
+      { name: "👑 حالة الاشتراك بالخدمة", value: isSubscribed ? `🟢 مفعل (ينتهي في ${new Date(sub.expiresAt).toLocaleDateString('ar-EG')})` : "🔴 غير مفعل (تكلفة الاشتراك: **10,000,000 رون / شهرياً**)", inline: false },
       { name: "🤖 البوتات/الويب هوك المضافة", value: `${bots.length} بوتات متصلة`, inline: true },
       { name: "📝 الرسالة الحالية", value: `\`\`\`${currentMsg}\`\`\`\n*(تذكير: **{user}** يتم استبدالها بمنشن الشخص تلقائياً)*`, inline: false }
     )
     .setFooter({ text: "يمكنك استخدام الأوامر أيضاً: /bc-control أو prefix 'bc'" });
 
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("bc_subscribe_btn").setLabel("💳 اشتراك / تجديد (10M XB)").setStyle(ButtonStyle.Success).setDisabled(isSubscribed),
+    new ButtonBuilder().setCustomId("bc_subscribe_btn").setLabel("💳 اشتراك / تجديد (10M رون)").setStyle(ButtonStyle.Success).setDisabled(isSubscribed),
     new ButtonBuilder().setCustomId("bc_addbot_btn").setLabel("➕ إضافة بوت (Webhook)").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("bc_send_online_btn").setLabel("🟢 إرسال للمتصلين (Online)").setStyle(ButtonStyle.Secondary)
   );
@@ -154,7 +154,7 @@ async function handleSubscribe(target, db, userId, guildId, isMsg = false) {
   const balance = userRow?.xb || 0;
 
   if (balance < COST) {
-    const msg = `❌ رصيدك غير كافٍ للاشتراك. التكلفة: **10,000,000 XB**. رصيدك الحالي: **${balance.toLocaleString('ar-EG')} XB**.`;
+    const msg = `❌ رصيدك غير كافٍ للاشتراك. التكلفة: **10,000,000 رون**. رصيدك الحالي: **${balance.toLocaleString('ar-EG')} رون**.`;
     return isMsg ? target.reply(msg) : target.reply({ content: msg, ephemeral: true });
   }
 
@@ -163,7 +163,7 @@ async function handleSubscribe(target, db, userId, guildId, isMsg = false) {
   const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare("INSERT OR REPLACE INTO broadcast_subscriptions (userId, expiresAt) VALUES (?, ?)").run(userId, expires);
 
-  const successMsg = `🎉 تم الاشتراك بنجاح في ميزة البرودكاست والمالتي كاست لمدة 30 يوماً! تم خصم **10,000,000 XB**.`;
+  const successMsg = `🎉 تم الاشتراك بنجاح في ميزة البرودكاست والمالتي كاست لمدة 30 يوماً! تم خصم **10,000,000 رون**.`;
   return isMsg ? target.reply(successMsg) : target.reply({ content: successMsg, ephemeral: true });
 }
 

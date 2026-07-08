@@ -1,0 +1,12 @@
+{
+  "bankRoom": "",
+  "salaryMin": 500,
+  "salaryMax": 20000,
+  "transferFee": 0.05,
+  "cooldowns": {
+    "راتب": 24,
+    "عمل": 6,
+    "سرقة": 3,
+    "استثمار": 6
+  }
+}

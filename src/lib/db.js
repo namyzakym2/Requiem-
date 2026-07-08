@@ -32,6 +32,11 @@ function runMigrations(db) {
       PRIMARY KEY (guildId, categoryName)
     );
 
+    CREATE TABLE IF NOT EXISTS ticket_settings (
+      guildId TEXT PRIMARY KEY,
+      supportRoleId TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -387,6 +392,44 @@ function runMigrations(db) {
       targetType TEXT DEFAULT 'all',
       scheduledTime TEXT,
       status TEXT DEFAULT 'pending'
+    );
+
+    CREATE TABLE IF NOT EXISTS admin_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guildId TEXT NOT NULL,
+      taskType TEXT NOT NULL,
+      cronSchedule TEXT NOT NULL,
+      data TEXT,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS welcome_configs (
+      guildId TEXT PRIMARY KEY,
+      channelId TEXT NOT NULL,
+      message TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS autorole_configs (
+      guildId TEXT PRIMARY KEY,
+      roleId TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guildId TEXT NOT NULL,
+      level TEXT NOT NULL,
+      message TEXT NOT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS command_configs (
+      guildId TEXT NOT NULL,
+      commandName TEXT NOT NULL,
+      alias TEXT,
+      allowedRoles TEXT,
+      disabledChannels TEXT,
+      allowedChannels TEXT,
+      PRIMARY KEY (guildId, commandName)
     );
   `);
 

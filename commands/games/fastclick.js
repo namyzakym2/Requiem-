@@ -33,7 +33,7 @@ export default {
             db.prepare("INSERT INTO leveling (userId, guildId, xp, level, xb) VALUES (?, ?, 0, 0, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?").run(i.user.id, interaction.guildId, xbReward, xbReward);
             const winEmbed = new EmbedBuilder().setTitle("🏆 فائز!").setDescription(`الفائز هو <@${i.user.id}>! لقد ضغط في **${timeTaken}** ثانية!
 
-💰 لقد حصلت على **${xbReward}** XB!`).setColor(65280).setTimestamp();
+💰 لقد حصلت على **${xbReward}** رون!`).setColor(65280).setTimestamp();
             await i.update({ content: `مبروك للفائز! <@${i.user.id}>`, embeds: [winEmbed], components: [] });
           });
           collector.on("end", async (collected) => {

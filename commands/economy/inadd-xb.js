@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 export default {
   name: "inadd-xb",
   category: "economy",
-  data: new SlashCommandBuilder().setName("inadd-xb").setDescription("سحب عملات XB من عضو (Authorized Only)").addUserOption((option) => option.setName("user").setDescription("العضو").setRequired(true)).addIntegerOption((option) => option.setName("amount").setDescription("المبلغ").setRequired(true)),
+  data: new SlashCommandBuilder().setName("inadd-xb").setDescription("سحب رون من عضو (Authorized Only)").addUserOption((option) => option.setName("user").setDescription("العضو").setRequired(true)).addIntegerOption((option) => option.setName("amount").setDescription("المبلغ").setRequired(true)),
   async executeInteraction(interaction, context) {
     const {
       client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
@@ -20,7 +20,7 @@ export default {
         const targetUser = interaction.options.getUser("user");
         const amount = interaction.options.getInteger("amount");
         await deductXB(guildId, targetUser.id, amount, `Admin remove by ${user.username}`);
-        await interaction.reply(`✅ تم سحب **${amount}** XB من رصيد ${targetUser}.`);
+        await interaction.reply(`✅ تم سحب **${amount}** رون من رصيد ${targetUser}.`);
       }
   },
   async executeMessage(message, args, context) {
@@ -39,7 +39,7 @@ export default {
           const amount = parseInt(args[1]);
           if (!targetUser || isNaN(amount)) return message.reply(`Usage: ${currentPrefix}inadd-xb @user <amount>`);
           await deductXB(guildId, targetUser.id, amount, "Admin remove");
-          return message.reply(`✅ تم سحب **${amount}** XB من رصيد ${targetUser}.`);
+          return message.reply(`✅ تم سحب **${amount}** رون من رصيد ${targetUser}.`);
         }
   }
 };

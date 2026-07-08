@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 export default {
   name: "add-xb",
   category: "economy",
-  data: new SlashCommandBuilder().setName("add-xb").setDescription("إضافة عملات XB لعضو (Authorized Only)").addUserOption((option) => option.setName("user").setDescription("العضو").setRequired(true)).addIntegerOption((option) => option.setName("amount").setDescription("المبلغ").setRequired(true)),
+  data: new SlashCommandBuilder().setName("add-xb").setDescription("إضافة رون لعضو (Authorized Only)").addUserOption((option) => option.setName("user").setDescription("العضو").setRequired(true)).addIntegerOption((option) => option.setName("amount").setDescription("المبلغ").setRequired(true)),
   async executeInteraction(interaction, context) {
     const {
       client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
@@ -39,7 +39,7 @@ export default {
           const amount = parseInt(args[1]);
           if (!targetUser || isNaN(amount)) return message.reply(`Usage: ${currentPrefix}add-xb @user <amount>`);
           await awardXB(guildId, targetUser.id, amount, "Admin add");
-          return message.reply(`✅ تم إضافة **${amount}** XB إلى رصيد ${targetUser}.`);
+          return message.reply(`✅ تم إضافة **${amount}** رون إلى رصيد ${targetUser}.`);
         }
   }
 };

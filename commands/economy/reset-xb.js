@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 export default {
   name: "reset-xb",
   category: "economy",
-  data: new SlashCommandBuilder().setName("reset-xb").setDescription("تصفير عملات XB لعضو أو للكل (Authorized Only)").addUserOption((option) => option.setName("user").setDescription("العضو المراد تصفيره")).addBooleanOption((option) => option.setName("all").setDescription("تصفير رصيد الجميع؟")),
+  data: new SlashCommandBuilder().setName("reset-xb").setDescription("تصفير رون لعضو أو للكل (Authorized Only)").addUserOption((option) => option.setName("user").setDescription("العضو المراد تصفيره")).addBooleanOption((option) => option.setName("all").setDescription("تصفير رصيد الجميع؟")),
   async executeInteraction(interaction, context) {
     const {
       client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
@@ -21,12 +21,12 @@ export default {
         const resetAll = interaction.options.getBoolean("all") || false;
         if (resetAll) {
           db.prepare("UPDATE leveling SET xb = 0 WHERE guildId = ?").run(guildId);
-          await interaction.reply("✅ تم تصفير رصيد XB لجميع الأعضاء في السيرفر.");
+          await interaction.reply("✅ تم تصفير رون جميع الأعضاء في السيرفر.");
         } else if (targetUser) {
           const targetRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(targetUser.id, guildId);
           const currentBalance = targetRow?.xb || 0;
           await deductXB(guildId, targetUser.id, currentBalance, `Admin reset by ${user.username}`);
-          await interaction.reply(`✅ تم تصفير رصيد XB للعضو ${targetUser}.`);
+          await interaction.reply(`✅ تم تصفير رون العضو ${targetUser}.`);
         } else {
           await interaction.reply({ content: "❌ يرجى تحديد عضو أو اختيار تصفير الكل.", ephemeral: true });
         }
@@ -51,12 +51,12 @@ export default {
             for (const u of allUsers) {
               await deductXB(guildId, u.userId, u.xb, "Admin reset all");
             }
-            return message.reply("✅ تم تصفير رصيد XB لجميع الأعضاء في السيرفر.");
+            return message.reply("✅ تم تصفير رون جميع الأعضاء في السيرفر.");
           } else if (targetUser) {
             const targetRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(targetUser.id, guildId);
             const currentBalance = targetRow?.xb || 0;
             await deductXB(guildId, targetUser.id, currentBalance, "Admin reset");
-            return message.reply(`✅ تم تصفير رصيد XB للعضو ${targetUser}.`);
+            return message.reply(`✅ تم تصفير رون العضو ${targetUser}.`);
           } else {
             return message.reply(`Usage: ${currentPrefix}reset-xb @user OR ${currentPrefix}reset-xb all`);
           }

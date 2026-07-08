@@ -51,6 +51,8 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
       title: isAr ? 'السجلات والنسخ' : 'LOGS & UTILITY',
       items: [
         { id: 'Logging', labelAr: 'السجلات واللوج', labelEn: 'Audit Logs', icon: Terminal },
+        { id: 'Logs', labelAr: 'سجلات النشاط', labelEn: 'Activity Logs', icon: Activity },
+        { id: 'Commands', labelAr: 'إدارة الأوامر', labelEn: 'Command Manager', icon: Bot },
         { id: 'Aliases', labelAr: 'الأوامر والغرف', labelEn: 'Commands & Rooms', icon: Sliders },
         { id: 'Backups', labelAr: 'النسخ الاحتياطي', labelEn: 'Backups', icon: Database },
       ]
@@ -59,7 +61,6 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
       title: isAr ? 'الأدوات المتقدمة' : 'ADVANCED AI',
       items: [
         { id: 'AI Generator', labelAr: 'مولد الصور والذكاء', labelEn: 'AI Generator', icon: Sparkles, badge: 'AI' },
-        { id: 'BloxFruits', labelAr: 'بلاد الفواكه', labelEn: 'Blox Fruits', icon: Bot, badge: 'Roblox' },
       ]
     }
   ];

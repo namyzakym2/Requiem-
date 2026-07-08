@@ -27,7 +27,7 @@ ${question.q}`).setColor(65280).setThumbnail("https://i.imgur.com/XyXyXyX.png").
           db.prepare("INSERT INTO leveling (userId, guildId, xp, level, xb) VALUES (?, ?, 0, 0, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?").run(m.author.id, interaction.guildId, xbReward, xbReward);
           const winEmbed = new EmbedBuilder().setTitle("✅ إجابة صحيحة!").setDescription(`مبروك يا ${m.author}! الإجابة هي: **${question.a}**
 
-💰 لقد حصلت على **${xbReward}** XB!`).setColor(65280).setTimestamp();
+💰 لقد حصلت على **${xbReward}** رون!`).setColor(65280).setTimestamp();
           interaction.followUp({ embeds: [winEmbed] });
         });
         collector?.on("end", (collected) => {
