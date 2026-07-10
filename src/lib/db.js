@@ -431,6 +431,11 @@ function runMigrations(db) {
       allowedChannels TEXT,
       PRIMARY KEY (guildId, commandName)
     );
+
+    CREATE TABLE IF NOT EXISTS premium_users (
+      userId TEXT PRIMARY KEY,
+      expiresAt DATETIME
+    );
   `);
 
   try {

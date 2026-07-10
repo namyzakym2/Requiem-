@@ -1,5 +1,6 @@
 {
   "name": "Requiem",
   "description": "A masterpiece of power and elegance. Requiem orchestrates the end of old worlds and the birth of new ones with unmatched precision—from server resets to flawless architectural cloning.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

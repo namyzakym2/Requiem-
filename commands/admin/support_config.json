@@ -1,0 +1,30 @@
+{
+  "channels": [
+    { "name": "📢-الاعلامات", "type": "text" },
+    { "name": "📜-القوانين", "type": "text" },
+    { "name": "📖-شرح-البوت", "type": "text" },
+    { "name": "👋-الترحيب", "type": "text" },
+    { "name": "💬-الشات-العام", "type": "text" },
+    { "name": "🤖-أوامر-البوت", "type": "text" },
+    { "name": "💳-شات-بنك-ويب", "type": "text" },
+    { "name": "💻-كوماند-بنك-ويب", "type": "text" },
+    { "name": "🎫-تذاكر-الدعم", "type": "text" },
+    { "name": "💡-الاقتراحات", "type": "text" },
+    { "name": "🛠️-شات-الإدارة", "type": "text" },
+    { "name": "📢-إعلانات-الإدارة", "type": "text" },
+    { "name": "📁-سجل-الرقابة", "type": "text" },
+    { "name": "🎤-اجتماع-الإدارة", "type": "voice" }
+  ],
+  "roles": [
+    { "name": "👑 | Owner", "color": "#ff0000", "hoist": true },
+    { "name": "🛠️ | Developer", "color": "#9b59b6", "hoist": true },
+    { "name": "👮 | Support Manager", "color": "#2980b9", "hoist": true },
+    { "name": "🛡️ | Support Team", "color": "#2ecc71", "hoist": true },
+    { "name": "💎 | Subscriber", "color": "#f1c40f", "hoist": true },
+    { "name": "👥 | Members", "color": "#95a5a6", "hoist": false }
+  ],
+  "serverSettings": {
+    "name": "Requiem Support Server",
+    "iconPath": "./commands/admin/support_icon.png"
+  }
+}

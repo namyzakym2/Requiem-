@@ -327,7 +327,7 @@ export default function BroadcastTab({ guild, onSave, lang }) {
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-zinc-400">{isAr ? 'فلتر حالة الأعضاء' : 'Presence Filter'}</label>
               <select
-                value={targetType}
+                value={targetType || 'all'}
                 onChange={(e) => setTargetType(e.target.value)}
                 className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
               >
@@ -340,7 +340,7 @@ export default function BroadcastTab({ guild, onSave, lang }) {
             <div className="space-y-1">
               <label className="text-[11px] font-semibold text-zinc-400">{isAr ? 'نمط السرعة' : 'Speed Mode'}</label>
               <select
-                value={speedMode}
+                value={speedMode || 'safe'}
                 onChange={(e) => setSpeedMode(e.target.value)}
                 className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
               >

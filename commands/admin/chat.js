@@ -6,8 +6,8 @@ export default {
   data: new SlashCommandBuilder()
     .setName("chat")
     .setDescription("⚙️ أوامر إدارة الشات")
-    .addSubcommand(sub => sub.setName("clear").setDescription("مسح الرسائل").addIntegerOption(o => o.setName("عدد").setRequired(true)))
-    .addSubcommand(sub => sub.setName("slowmode").setDescription("تحديد بطء الشات").addIntegerOption(o => o.setName("ثواني").setRequired(true)))
+    .addSubcommand(sub => sub.setName("clear").setDescription("مسح الرسائل").addIntegerOption(o => o.setName("amount").setRequired(true)))
+    .addSubcommand(sub => sub.setName("slowmode").setDescription("تحديد بطء الشات").addIntegerOption(o => o.setName("seconds").setRequired(true)))
     .addSubcommand(sub => sub.setName("lock").setDescription("قفل الشات"))
     .addSubcommand(sub => sub.setName("unlock").setDescription("فتح الشات"))
     .addSubcommand(sub => sub.setName("nuke").setDescription("مسح الشات بالكامل")),

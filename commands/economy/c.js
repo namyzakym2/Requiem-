@@ -13,7 +13,7 @@ export default {
     } = context;
 
     let { commandName, user, guildId, guild, channel } = interaction;
-    if (commandName === "c" || commandName === "xbc") {
+    if (commandName === "c" || commandName === "ronc") {
         const targetUser = interaction.options.getUser("user");
         const amount = interaction.options.getInteger("amount");
         if (!targetUser && !amount) {
@@ -60,9 +60,10 @@ export default {
 
     const guildId = message.guild.id;
     const commandName = "c";
-    if (commandName === "c" || commandName === "xbc") {
+    if (commandName === "c" || commandName === "ronc") {
           const targetUser = message.mentions.users.first();
           const amount = parseInt(args[1]);
+          const currentPrefix = PREFIX || ".";
           if (!targetUser && args.length === 0) {
             const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(message.author.id, guildId);
             const balance = userRow?.xb || 0;
@@ -81,7 +82,8 @@ export default {
               return message.reply(`❌ رصيدك غير كافٍ. رصيدك الحالي هو **${senderBalance}** رون.`);
             }
             db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(amount, message.author.id, guildId);
-            await awardXB(guildId, targetUser.id, amount, `Transfer from ${message.author.username}`);
+            db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?").run(targetUser.id, guildId, amount, amount);
+            await logCurrencyTransaction(guildId, targetUser.id, amount, `Transfer from ${message.author.username}`, "add");
             return message.reply(`✅ تم تحويل **${amount}** رون بنجاح إلى ${targetUser}.`);
           }
           return message.reply(`❌ الاستخدام الصحيح:

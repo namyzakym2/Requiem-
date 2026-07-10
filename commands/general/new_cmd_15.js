@@ -1,0 +1,1 @@
+export default { name: "test15", category: "general", executeMessage: async (message) => message.reply("Test 15") };

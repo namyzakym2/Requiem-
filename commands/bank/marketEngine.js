@@ -11,7 +11,9 @@ const UPDATE_MS = 5 * 60 * 1000;
 export function updatePrices() {
   try {
     if (!fs.existsSync(MARKET_PATH)) return;
-    const m = JSON.parse(fs.readFileSync(MARKET_PATH, "utf8"));
+    const fileContent = fs.readFileSync(MARKET_PATH, "utf8");
+    if (!fileContent.trim()) return;
+    const m = JSON.parse(fileContent);
 
     for (const key of ["stocks", "properties"]) {
       if (!m[key]) continue;

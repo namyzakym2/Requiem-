@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
-import { load, save, settings, logTx, C, n, E, noRoom } from "./utils.js";
+import { load, save, settings, logTx, C, n, E, noRoom, isPremiumUser } from "./utils.js";
 
 const SELF_MSGS = [
   "انتا سكران ولا عبيط؟ 😂 مش هتحول لنفسك!",
@@ -13,7 +13,7 @@ export default {
   category: "bank",
   data: new SlashCommandBuilder()
     .setName("تحويل")
-    .setDescription("💸 حوّل فلوس لشخص ثاني مع خصم رسوم")
+    .setDescription("💸 حوّل فلوس لشخص ثاني مع خصم رسوم (رسوم أقل للمشتركين المميزين)")
     .addUserOption(o => o.setName("المستلم").setDescription("العضو المستلم").setRequired(true))
     .addIntegerOption(o => o.setName("المبلغ").setDescription("المبلغ المراد تحويله").setMinValue(1).setRequired(true)),
 
@@ -32,51 +32,46 @@ export default {
       return interaction.reply({ embeds: [E("🤦 يا عم!").setDescription(msg)], ephemeral: true });
     }
 
-    const fee = Math.ceil(amount * (cfg.transferFee ?? 0.05));
+    const premium = isPremiumUser(uid);
+    const activeFeeRate = premium ? 0.01 : (cfg.transferFee ?? 0.05); // 1% instead of 5%
+    const fee = Math.ceil(amount * activeFeeRate);
     const total = amount + fee;
-    const users = load("users.json");
 
-    // Sync sender balance from SQLite
+    // Use SQLite as the single source of truth
     const senderRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
-    const senderDbBal = senderRow?.xb || 0;
-    if (!users[uid]) {
-      users[uid] = { balance: senderDbBal, vault: 0 };
-    } else {
-      users[uid].balance = Math.max(users[uid].balance || 0, senderDbBal);
-    }
+    const senderBalance = senderRow?.xb || 0;
 
-    // Sync receiver balance from SQLite
     const targetRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, interaction.guildId);
-    const targetDbBal = targetRow?.xb || 0;
-    if (!users[target.id]) {
-      users[target.id] = { balance: targetDbBal, vault: 0 };
-    } else {
-      users[target.id].balance = Math.max(users[target.id].balance || 0, targetDbBal);
-    }
+    const targetBalance = targetRow?.xb || 0;
 
-    if ((users[uid].balance || 0) < total) {
-      return interaction.reply({ embeds: [E("❌ فلوسك مش كفاية").setDescription(`تحتاج **${n(total)} رون** (رسوم **${n(fee)} رون**)\nرصيدك الحالي: **${n(users[uid].balance || 0)} رون**`)], ephemeral: true });
+    if (senderBalance < total) {
+      return interaction.reply({ embeds: [E("❌ فلوسك مش كفاية").setDescription(`تحتاج **${n(total)} رون** (رسوم **${n(fee)} رون**)\nرصيدك الحالي: **${n(senderBalance)} رون**`)], ephemeral: true });
     }
-
-    users[uid].balance -= total;
-    users[target.id].balance = (users[target.id].balance || 0) + amount;
-    save("users.json", users);
-    
-    logTx(uid, "تحويل_صادر", -total, `إلى <@${target.id}>`);
-    logTx(target.id, "تحويل_وارد", amount, `من <@${uid}>`);
 
     // Update SQLite database for both users
     db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(total, uid, interaction.guildId);
     db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
       .run(target.id, interaction.guildId, amount, amount);
+    
+    logTx(uid, "تحويل_صادر", -total, premium ? `إلى <@${target.id}> (رسوم مخفضة بريميوم)` : `إلى <@${target.id}>`);
+    logTx(target.id, "تحويل_وارد", amount, `من <@${uid}>`);
 
-    return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم التحويل بنجاح")
+    const embed = new EmbedBuilder()
+      .setColor(premium ? 0xd4af37 : C)
+      .setTitle(premium ? "🌟 تم التحويل بنجاح (ميزة البريميوم نشطة)!" : "✅ تم التحويل بنجاح")
       .addFields(
         { name: "📤 المستلم",    value: `<@${target.id}>`,          inline: true },
         { name: "💵 المبلغ",    value: `${n(amount)} رون`,             inline: true },
-        { name: "💳 الرسوم",    value: `${n(fee)} رون`,                inline: true },
-        { name: "💳 رصيدك",     value: `${n(users[uid].balance)} رون`, inline: false }
-      ).setTimestamp()] });
+        { name: "💳 الرسوم المستقطعة", value: `${n(fee)} رون (${premium ? "1% بريميوم" : "5% أساسي"})`, inline: true },
+        { name: "💳 رصيدك المتبقي",     value: `${n(senderBalance - total)} رون`, inline: false }
+      )
+      .setTimestamp();
+
+    if (premium) {
+      embed.setDescription("✨ تم تطبيق خصم البريميوم بنجاح! تم احتساب رسوم تحويل **1%** فقط بدلاً من **5%**.");
+    }
+
+    return interaction.reply({ embeds: [embed] });
   },
 
   async executeMessage(message, args, context) {
@@ -97,47 +92,45 @@ export default {
       return message.reply({ embeds: [E("🤦 يا عم!").setDescription(msg)] });
     }
 
-    const fee = Math.ceil(amount * (cfg.transferFee ?? 0.05));
+    const premium = isPremiumUser(uid);
+    const activeFeeRate = premium ? 0.01 : (cfg.transferFee ?? 0.05); // 1% instead of 5%
+    const fee = Math.ceil(amount * activeFeeRate);
     const total = amount + fee;
-    const users = load("users.json");
 
+    // Use SQLite as the single source of truth
     const senderRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
-    const dbBal = senderRow?.xb || 0;
-    if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
-    } else {
-      users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
-    }
+    const senderBalance = senderRow?.xb || 0;
 
     const targetRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, message.guild.id);
-    const targetDbBal = targetRow?.xb || 0;
-    if (!users[target.id]) {
-      users[target.id] = { balance: targetDbBal, vault: 0 };
-    } else {
-      users[target.id].balance = Math.max(users[target.id].balance || 0, targetDbBal);
+    const targetBalance = targetRow?.xb || 0;
+
+    if (senderBalance < total) {
+      return message.reply({ embeds: [E("❌ فلوسك مش كفاية").setDescription(`تحتاج **${n(total)} رون** (رسوم **${n(fee)} رون**)\nرصيدك الحالي: **${n(senderBalance)} رون**`)] });
     }
 
-    if ((users[uid].balance || 0) < total) {
-      return message.reply({ embeds: [E("❌ فلوسك مش كفاية").setDescription(`تحتاج **${n(total)} رون** (رسوم **${n(fee)} رون**)\nرصيدك الحالي: **${n(users[uid].balance || 0)} رون**`)] });
-    }
-
-    users[uid].balance -= total;
-    users[target.id].balance = (users[target.id].balance || 0) + amount;
-    save("users.json", users);
-
-    logTx(uid, "تحويل_صادر", -total, `إلى <@${target.id}>`);
-    logTx(target.id, "تحويل_وارد", amount, `من <@${uid}>`);
-
+    // Update SQLite database for both users
     db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(total, uid, message.guild.id);
     db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
       .run(target.id, message.guild.id, amount, amount);
 
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم التحويل بنجاح")
+    logTx(uid, "تحويل_صادر", -total, premium ? `إلى <@${target.id}> (رسوم مخفضة بريميوم)` : `إلى <@${target.id}>`);
+    logTx(target.id, "تحويل_وارد", amount, `من <@${uid}>`);
+
+    const embed = new EmbedBuilder()
+      .setColor(premium ? 0xd4af37 : C)
+      .setTitle(premium ? "🌟 تم التحويل بنجاح (ميزة البريميوم نشطة)!" : "✅ تم التحويل بنجاح")
       .addFields(
         { name: "📤 المستلم",    value: `<@${target.id}>`,          inline: true },
         { name: "💵 المبلغ",    value: `${n(amount)} رون`,             inline: true },
-        { name: "💳 الرسوم",    value: `${n(fee)} رون`,                inline: true },
-        { name: "💳 رصيدك",     value: `${n(users[uid].balance)} رون`, inline: false }
-      ).setTimestamp()] });
+        { name: "💳 الرسوم المستقطعة", value: `${n(fee)} رون (${premium ? "1% بريميوم" : "5% أساسي"})`, inline: true },
+        { name: "💳 رصيدك المتبقي",     value: `${n(senderBalance - total)} رون`, inline: false }
+      )
+      .setTimestamp();
+
+    if (premium) {
+      embed.setDescription("✨ تم تطبيق خصم البريميوم بنجاح! تم احتساب رسوم تحويل **1%** فقط بدلاً من **5%**.");
+    }
+
+    return message.reply({ embeds: [embed] });
   }
 };

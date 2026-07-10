@@ -129,7 +129,7 @@ export default {
     } = context;
 
     let { commandName, user, guildId, guild, channel } = interaction;
-    if (commandName === "p" || commandName === "xbp") {
+    if (commandName === "p" || commandName === "ronp") {
         const targetUser = interaction.options.getUser("user") || user;
         const userRow = db.prepare("SELECT * FROM leveling WHERE userId = ? AND guildId = ?").get(targetUser.id, guildId);
         const level = userRow?.level || 0;
@@ -156,7 +156,7 @@ export default {
 
     const guildId = message.guild.id;
     const commandName = "p";
-    if (commandName === "p" || commandName === "xbp") {
+    if (commandName === "p" || commandName === "ronp") {
           const targetUser = message.mentions.users.first() || message.author;
           const userRow = db.prepare("SELECT * FROM leveling WHERE userId = ? AND guildId = ?").get(targetUser.id, guildId);
           const level = userRow?.level || 0;

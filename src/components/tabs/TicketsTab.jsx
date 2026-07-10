@@ -74,7 +74,7 @@ export default function TicketsTab({ guild, onSave, lang }) {
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-300">{isAr ? 'رتبة الدعم المسؤول' : 'Support Team Role'}</label>
             <select
-              value={selectedRole}
+              value={selectedRole || ''}
               onChange={(e) => setSelectedRole(e.target.value)}
               className="w-full bg-zinc-950/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
             >

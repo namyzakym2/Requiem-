@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Activity, Hash, Users, Shield, Radio, Save, Check, Command, Sliders, ToggleLeft, ToggleRight, MessageSquare, Flame, Lock } from 'lucide-react';
 import axios from 'axios';
 
-export default function OverviewTab({ guild, onSave, lang }) {
+export default function SettingsTab({ guild, onSave, lang }) {
   const isAr = lang === 'ar';
-  const [prefix, setPrefix] = useState('Xb');
+  const [prefix, setPrefix] = useState("'");
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 

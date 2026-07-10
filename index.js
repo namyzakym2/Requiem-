@@ -47,8 +47,8 @@ const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || config.client
 const APP_URL = process.env.APP_URL || config.appUrl;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || config.geminiApiKey;
 const JWT_SECRET = process.env.JWT_SECRET || config.jwtSecret;
-const OWNER_ID = "1071164421222695042";
-const OWNER_USERNAME = "j8rb";
+const OWNER_ID = process.env.OWNER_ID || config.ownerId || "1071164421222695042";
+const OWNER_USERNAME = ".mm.8";
 
 const client = new Client({
   intents: [
@@ -63,7 +63,7 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
-const PREFIX = ".";
+const PREFIX = "'";
 
 const spamMap = new Map();
 const raidMap = new Map();
@@ -251,8 +251,15 @@ client.on("ready", async () => {
 
     console.log("Started refreshing application (/) commands.");
     if (client.application) {
-      await client.application.commands.set(slashCommandsData);
-      console.log(`Successfully reloaded ${slashCommandsData.length} global application (/) commands.`);
+      try {
+        await client.application.commands.set(slashCommandsData);
+        console.log(`Successfully reloaded ${slashCommandsData.length} global application (/) commands.`);
+      } catch (err) {
+        if (err.rawError && err.rawError.errors) {
+          console.error("Discord API Error Details:", JSON.stringify(err.rawError.errors, null, 2));
+        }
+        throw err;
+      }
     }
     for (const guild of client.guilds.cache.values()) {
       try {
@@ -271,6 +278,7 @@ client.on("ready", async () => {
 client.on("messageCreate", async (message) => {
   try {
     if (message.author.bot || !message.guild) return;
+    global.currentChannelId = message.channelId;
     const guildId = message.guild.id;
 
     // Bad words protection
@@ -330,6 +338,12 @@ client.on("messageCreate", async (message) => {
 
       const command = client.commands?.get(commandName);
       if (command) {
+        if (command.category === "economy") {
+          const settings = db.prepare("SELECT channelId FROM bank_settings WHERE guildId = ?").get(guildId);
+          if (settings && settings.channelId !== message.channelId) {
+            return message.reply(`❌ يمكنك استخدام هذا الأمر فقط في شات البنك: <#${settings.channelId}>`);
+          }
+        }
         try {
           if (typeof command.executeMessage === 'function') {
             await command.executeMessage(message, args, context);
@@ -348,6 +362,9 @@ client.on("messageCreate", async (message) => {
 
 client.on("interactionCreate", async (interaction) => {
   try {
+    if (interaction.channelId) {
+      global.currentChannelId = interaction.channelId;
+    }
     const prefixSetting = interaction.guildId ? db.prepare("SELECT value FROM settings WHERE key = ?").get(`prefix_${interaction.guildId}`) : null;
     const currentPrefix = prefixSetting ? prefixSetting.value : PREFIX;
 
@@ -382,6 +399,12 @@ client.on("interactionCreate", async (interaction) => {
 
       const command = client.commands?.get(commandName);
       if (command) {
+        if (command.category === "economy") {
+          const settings = db.prepare("SELECT channelId FROM bank_settings WHERE guildId = ?").get(guildId);
+          if (settings && settings.channelId !== interaction.channelId) {
+            return interaction.reply({ content: `❌ يمكنك استخدام هذا الأمر فقط في شات البنك: <#${settings.channelId}>`, ephemeral: true });
+          }
+        }
         try {
           if (typeof command.executeInteraction === 'function') {
             await command.executeInteraction(interaction, context);
@@ -484,18 +507,68 @@ client.on("interactionCreate", async (interaction) => {
         });
 
         const welcomeEmbed = new EmbedBuilder()
-          .setTitle("🎫 تذكرة دعم جديدة")
+          .setTitle("🎫 تذكرة دعم جديدة | Ticket Opened")
           .setDescription(`أهلاً بك <@${user.id}> في تذكرة الدعم الفني الخاصة بك.\nيرجى طرح استفسارك أو مشكلتك هنا وسيقوم فريق الدعم بالرد عليك في أقرب وقت.`)
-          .setColor(3066993)
+          .addFields(
+            { name: "👤 صاحب التذكرة", value: `<@${user.id}>`, inline: true },
+            { name: "🛡️ فريق الدعم", value: supportRoleId ? `<@&${supportRoleId}>` : "طاقم العمل", inline: true },
+            { name: "⚙️ التحكم بالتذكرة", value: "استخدم قائمة الخيارات أدناه للتحكم بالتذكرة بالكامل بسهولة وبدون أزرار." }
+          )
+          .setColor(0x8a2be2)
           .setTimestamp();
 
-        const closeButton = new ButtonBuilder()
-          .setCustomId("close_ticket")
-          .setLabel("إغلاق التذكرة")
-          .setStyle(ButtonStyle.Danger)
-          .setEmoji("🔒");
+        const controlMenu = new StringSelectMenuBuilder()
+          .setCustomId("ticket_control_menu")
+          .setPlaceholder("⚙️ اختر إجراءً للتحكم بالتذكرة...")
+          .addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel("استلام التذكرة")
+              .setDescription("استلام التذكرة من قبل طاقم الدعم")
+              .setValue("claim")
+              .setEmoji("🙋‍♂️"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("إغلاق التذكرة")
+              .setDescription("إغلاق وحذف التذكرة بشكل نهائي")
+              .setValue("close")
+              .setEmoji("🔒"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("إضافة عضو")
+              .setDescription("إضافة عضو جديد لرؤية هذه التذكرة")
+              .setValue("add_member")
+              .setEmoji("➕"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("إزالة عضو")
+              .setDescription("إزالة عضو من التذكرة")
+              .setValue("remove_member")
+              .setEmoji("➖"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("إعادة تسمية التكت")
+              .setDescription("تغيير اسم روم التذكرة الحالي")
+              .setValue("rename")
+              .setEmoji("✏️"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("استدعاء فريق الدعم")
+              .setDescription("منشن طاقم الدعم المساعد")
+              .setValue("call_support")
+              .setEmoji("🔔"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("استدعاء مالك السيرفر")
+              .setDescription("إرسال تنبيه مباشر لمالك السيرفر")
+              .setValue("call_owner")
+              .setEmoji("👑"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("استدعاء صاحب التكت")
+              .setDescription("منشن العضو الذي قام بفتح التذكرة")
+              .setValue("call_creator")
+              .setEmoji("👤"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("حفظ نسخة المحادثة")
+              .setDescription("تصدير نسخة كاملة لشات التذكرة")
+              .setValue("transcript")
+              .setEmoji("📁")
+          );
 
-        const welcomeRow = new ActionRowBuilder().addComponents(closeButton);
+        const welcomeRow = new ActionRowBuilder().addComponents(controlMenu);
 
         await ticketChannel.send({
           content: `${user} ${supportRoleId ? `<@&${supportRoleId}>` : ""}`,
@@ -504,6 +577,24 @@ client.on("interactionCreate", async (interaction) => {
         });
 
         return interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: ${ticketChannel}` });
+      }
+
+      if (customId === "claim_ticket") {
+        await interaction.deferReply();
+        const member = interaction.member;
+        
+        db.prepare("UPDATE tickets SET claimedBy = ? WHERE channelId = ?").run(member.id, interaction.channelId);
+        
+        await interaction.channel.permissionOverwrites.edit(member.id, {
+          ViewChannel: true,
+          SendMessages: true,
+          EmbedLinks: true,
+          AttachFiles: true,
+          ReadMessageHistory: true
+        });
+
+        await interaction.editReply({ content: `✅ تم استلام التذكرة من قبل ${member}` });
+        return;
       }
 
       if (customId === "close_ticket") {
@@ -528,8 +619,333 @@ client.on("interactionCreate", async (interaction) => {
         return;
       }
     }
+
+    if (interaction.isStringSelectMenu()) {
+      const { customId, values, user, guildId, guild, member } = interaction;
+
+      if (customId === "ticket_select_menu") {
+        await interaction.deferReply({ ephemeral: true });
+
+        const category = values[0];
+        let categoryName = "دعم فني واستفسارات";
+        if (category === "tech_support") categoryName = "🛠️ الدعم الفني والتقني";
+        else if (category === "sales") categoryName = "💳 الحسابات والمبيعات والبريميوم";
+        else if (category === "complaints") categoryName = "🤝 الشكاوى والاقتراحات";
+
+        // Check if user already has an open ticket
+        const existingTicket = db.prepare("SELECT * FROM tickets WHERE userId = ? AND status = 'open'").get(user.id);
+        if (existingTicket) {
+          const existingChan = guild.channels.cache.get(existingTicket.channelId);
+          if (existingChan) {
+            return interaction.editReply({ content: `❌ لديك تذكرة مفتوحة بالفعل هنا: <#${existingTicket.channelId}>` });
+          } else {
+            db.prepare("UPDATE tickets SET status = 'closed' WHERE channelId = ?").run(existingTicket.channelId);
+          }
+        }
+
+        const supportRow = db.prepare("SELECT supportRoleId FROM ticket_settings WHERE guildId = ?").get(guildId);
+        const supportRoleId = supportRow?.supportRoleId;
+
+        const permissionOverwrites = [
+          {
+            id: guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.ViewChannel],
+          },
+          {
+            id: user.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.ReadMessageHistory],
+          }
+        ];
+
+        if (supportRoleId) {
+          permissionOverwrites.push({
+            id: supportRoleId,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.ReadMessageHistory],
+          });
+        }
+
+        const cleanUsername = user.username.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const ticketChannel = await guild.channels.create({
+          name: `ticket-${cleanUsername || "user"}`,
+          type: ChannelType.GuildText,
+          permissionOverwrites,
+        });
+
+        db.prepare("INSERT INTO tickets (userId, channelId, status) VALUES (?, ?, 'open')").run(user.id, ticketChannel.id);
+
+        logEvent(guildId, "interactionCreate", {
+          title: "🎫 Ticket Opened via Dropdown",
+          description: `**User:** <@${user.id}>\n**Channel:** <#${ticketChannel.id}>\n**Category:** ${categoryName}`,
+          color: 3066993
+        });
+
+        const welcomeEmbed = new EmbedBuilder()
+          .setTitle("🎫 تذكرة دعم جديدة | Ticket Opened")
+          .setDescription(`أهلاً بك <@${user.id}> في تذكرة الدعم الفني الخاصة بك.\nيرجى طرح استفسارك أو مشكلتك هنا وسيقوم فريق الدعم بالرد عليك في أقرب وقت.`)
+          .addFields(
+            { name: "👤 صاحب التذكرة", value: `<@${user.id}>`, inline: true },
+            { name: "🗂️ القسم المختار", value: `**${categoryName}**`, inline: true },
+            { name: "🛡️ فريق الدعم", value: supportRoleId ? `<@&${supportRoleId}>` : "طاقم العمل", inline: true },
+            { name: "⚙️ التحكم بالتذكرة", value: "استخدم قائمة الخيارات أدناه للتحكم بالتذكرة بالكامل بسهولة وبدون أزرار." }
+          )
+          .setColor(0x8a2be2)
+          .setTimestamp();
+
+        const controlMenu = new StringSelectMenuBuilder()
+          .setCustomId("ticket_control_menu")
+          .setPlaceholder("⚙️ اختر إجراءً للتحكم بالتذكرة...")
+          .addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel("استلام التذكرة")
+              .setDescription("استلام التذكرة من قبل طاقم الدعم")
+              .setValue("claim")
+              .setEmoji("🙋‍♂️"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("إغلاق التذكرة")
+              .setDescription("إغلاق وحذف التذكرة بشكل نهائي")
+              .setValue("close")
+              .setEmoji("🔒"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("إضافة عضو")
+              .setDescription("إضافة عضو جديد لرؤية هذه التذكرة")
+              .setValue("add_member")
+              .setEmoji("➕"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("إزالة عضو")
+              .setDescription("إزالة عضو من التذكرة")
+              .setValue("remove_member")
+              .setEmoji("➖"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("إعادة تسمية التكت")
+              .setDescription("تغيير اسم روم التذكرة الحالي")
+              .setValue("rename")
+              .setEmoji("✏️"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("استدعاء فريق الدعم")
+              .setDescription("منشن طاقم الدعم المساعد")
+              .setValue("call_support")
+              .setEmoji("🔔"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("استدعاء مالك السيرفر")
+              .setDescription("إرسال تنبيه مباشر لمالك السيرفر")
+              .setValue("call_owner")
+              .setEmoji("👑"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("استدعاء صاحب التكت")
+              .setDescription("منشن العضو الذي قام بفتح التذكرة")
+              .setValue("call_creator")
+              .setEmoji("👤"),
+            new StringSelectMenuOptionBuilder()
+              .setLabel("حفظ نسخة المحادثة")
+              .setDescription("تصدير نسخة كاملة لشات التذكرة")
+              .setValue("transcript")
+              .setEmoji("📁")
+          );
+
+        const welcomeRow = new ActionRowBuilder().addComponents(controlMenu);
+
+        await ticketChannel.send({
+          content: `${user} ${supportRoleId ? `<@&${supportRoleId}>` : ""}`,
+          embeds: [welcomeEmbed],
+          components: [welcomeRow]
+        });
+
+        return interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: ${ticketChannel}` });
+      }
+
+      if (customId === "ticket_control_menu") {
+        const action = values[0];
+
+        if (action === "claim") {
+          await interaction.deferReply();
+          
+          db.prepare("UPDATE tickets SET claimedBy = ? WHERE channelId = ?").run(member.id, interaction.channelId);
+          
+          await interaction.channel.permissionOverwrites.edit(member.id, {
+            ViewChannel: true,
+            SendMessages: true,
+            EmbedLinks: true,
+            AttachFiles: true,
+            ReadMessageHistory: true
+          });
+
+          return interaction.editReply({ content: `✅ تم استلام التذكرة وبدء المتابعة من قبل المساعد: ${member}` });
+        }
+
+        if (action === "close") {
+          await interaction.deferReply();
+          
+          db.prepare("UPDATE tickets SET status = 'closed' WHERE channelId = ?").run(interaction.channelId);
+
+          logEvent(guildId, "interactionCreate", {
+            title: "🔒 Ticket Closed via Control Menu",
+            description: `**User:** <@${user.id}>\n**Channel:** #${interaction.channel.name}`,
+            color: 15158332
+          });
+
+          await interaction.editReply({ content: "🔒 سيتم إغلاق التذكرة وحذف القناة خلال 5 ثوانٍ تلقائياً..." });
+          
+          setTimeout(async () => {
+            await interaction.channel.delete().catch(() => {});
+          }, 5000);
+          return;
+        }
+
+        if (action === "add_member") {
+          const modal = new ModalBuilder()
+            .setCustomId("ticket_add_member_modal")
+            .setTitle("إضافة عضو للتذكرة");
+
+          const userInput = new TextInputBuilder()
+            .setCustomId("user_id_input")
+            .setLabel("أدخل معرف العضو (ID)")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder("مثال: 1071164421222695042")
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(userInput));
+          return interaction.showModal(modal);
+        }
+
+        if (action === "remove_member") {
+          const modal = new ModalBuilder()
+            .setCustomId("ticket_remove_member_modal")
+            .setTitle("إزالة عضو من التذكرة");
+
+          const userInput = new TextInputBuilder()
+            .setCustomId("user_id_input")
+            .setLabel("أدخل معرف العضو (ID)")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder("مثال: 1071164421222695042")
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(userInput));
+          return interaction.showModal(modal);
+        }
+
+        if (action === "rename") {
+          const modal = new ModalBuilder()
+            .setCustomId("ticket_rename_modal")
+            .setTitle("إعادة تسمية التكت");
+
+          const nameInput = new TextInputBuilder()
+            .setCustomId("new_name_input")
+            .setLabel("الاسم الجديد للتذكرة")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder("مثال: مشكلة-الدفع")
+            .setRequired(true);
+
+          modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+          return interaction.showModal(modal);
+        }
+
+        if (action === "call_support") {
+          await interaction.deferReply({ ephemeral: true });
+          const supportRow = db.prepare("SELECT supportRoleId FROM ticket_settings WHERE guildId = ?").get(guildId);
+          const supportRoleId = supportRow?.supportRoleId;
+          if (supportRoleId) {
+            await interaction.channel.send({ content: `🔔 **استدعاء فريق الدعم:** <@&${supportRoleId}>، يرجى الحضور للمساعدة في أقرب وقت.` });
+            return interaction.editReply({ content: "✅ تم استدعاء فريق الدعم بنجاح." });
+          } else {
+            return interaction.editReply({ content: "❌ لم يتم إعداد رتبة الدعم الفني لهذا السيرفر بعد." });
+          }
+        }
+
+        if (action === "call_owner") {
+          await interaction.deferReply({ ephemeral: true });
+          const ownerId = guild.ownerId;
+          if (ownerId) {
+            await interaction.channel.send({ content: `👑 **استدعاء مالك السيرفر:** <@${ownerId}>، مطلوب حضورك للتذكرة لأمر هام.` });
+            return interaction.editReply({ content: "✅ تم استدعاء مالك السيرفر بنجاح." });
+          } else {
+            return interaction.editReply({ content: "❌ لم يتم العثور على مالك السيرفر." });
+          }
+        }
+
+        if (action === "call_creator") {
+          await interaction.deferReply({ ephemeral: true });
+          const ticket = db.prepare("SELECT userId FROM tickets WHERE channelId = ?").get(interaction.channelId);
+          if (ticket && ticket.userId) {
+            await interaction.channel.send({ content: `👤 **استدعاء صاحب التذكرة:** <@${ticket.userId}>، فريق الدعم متواجد وبانتظارك هنا.` });
+            return interaction.editReply({ content: "✅ تم استدعاء صاحب التكت بنجاح." });
+          } else {
+            return interaction.editReply({ content: "❌ لم نتمكن من تحديد صاحب هذه التذكرة." });
+          }
+        }
+
+        if (action === "transcript") {
+          await interaction.deferReply();
+          try {
+            const messages = await interaction.channel.messages.fetch({ limit: 100 });
+            let transcriptText = `--- Transcript for ticket: ${interaction.channel.name} ---\n`;
+            transcriptText += `Saved At: ${new Date().toLocaleString("ar-EG")}\n\n`;
+            const sorted = Array.from(messages.values()).reverse();
+            for (const msg of sorted) {
+              const date = new Date(msg.createdAt).toLocaleString("ar-EG");
+              transcriptText += `[${date}] ${msg.author.tag}: ${msg.content}\n`;
+              if (msg.embeds && msg.embeds.length > 0) {
+                transcriptText += `[Embed: ${msg.embeds[0].title || "No Title"} - ${msg.embeds[0].description || "No Description"}]\n`;
+              }
+            }
+            const buffer = Buffer.from(transcriptText, "utf-8");
+            const attachment = new AttachmentBuilder(buffer, { name: `transcript-${interaction.channel.name}.txt` });
+            await interaction.editReply({ content: "📁 **نسخة محادثة التذكرة المكتوبة:**", files: [attachment] });
+          } catch (e) {
+            console.error("Error generating transcript:", e);
+            await interaction.editReply({ content: "❌ حدث خطأ أثناء محاولة توليد نسخة المحادثة." });
+          }
+          return;
+        }
+      }
+    }
+
+    if (interaction.isModalSubmit()) {
+      const { customId, fields, user, guild } = interaction;
+
+      if (customId === "ticket_add_member_modal") {
+        await interaction.deferReply({ ephemeral: true });
+        const targetId = fields.getTextInputValue("user_id_input").trim().replace(/[<@!>]/g, "");
+        const targetMember = await guild.members.fetch(targetId).catch(() => null);
+        if (!targetMember) {
+          return interaction.editReply({ content: "❌ تعذر العثور على هذا العضو في السيرفر. تأكد من إدخال ID صحيح." });
+        }
+        await interaction.channel.permissionOverwrites.edit(targetMember.id, {
+          ViewChannel: true,
+          SendMessages: true,
+          EmbedLinks: true,
+          AttachFiles: true,
+          ReadMessageHistory: true
+        });
+        await interaction.channel.send({ content: `➕ **تم إضافة عضو:** تم إضافة العضو ${targetMember} لمتابعة التذكرة بواسطة ${user}.` });
+        return interaction.editReply({ content: "✅ تم إضافة العضو للتذكرة بنجاح." });
+      }
+
+      if (customId === "ticket_remove_member_modal") {
+        await interaction.deferReply({ ephemeral: true });
+        const targetId = fields.getTextInputValue("user_id_input").trim().replace(/[<@!>]/g, "");
+        const targetMember = await guild.members.fetch(targetId).catch(() => null);
+        if (!targetMember) {
+          return interaction.editReply({ content: "❌ تعذر العثور على هذا العضو في السيرفر." });
+        }
+        await interaction.channel.permissionOverwrites.delete(targetMember.id);
+        await interaction.channel.send({ content: `➖ **تم إزالة عضو:** تم إزالة العضو ${targetMember} من التذكرة بواسطة ${user}.` });
+        return interaction.editReply({ content: "✅ تم إزالة العضو من التذكرة بنجاح." });
+      }
+
+      if (customId === "ticket_rename_modal") {
+        await interaction.deferReply({ ephemeral: true });
+        const newName = fields.getTextInputValue("new_name_input").trim().toLowerCase().replace(/\s+/g, "-");
+        if (!newName) {
+          return interaction.editReply({ content: "❌ الاسم غير صالح." });
+        }
+        await interaction.channel.setName(`ticket-${newName}`);
+        await interaction.channel.send({ content: `✏️ **إعادة التسمية:** تم تغيير اسم قناة التذكرة إلى **ticket-${newName}** بواسطة ${user}.` });
+        return interaction.editReply({ content: "✅ تم تغيير اسم التذكرة بنجاح." });
+      }
+    }
   } catch (err) {
     console.error("Error in interactionCreate handler:", err);
+  }
   }
 });
 
@@ -661,22 +1077,165 @@ function setupDashboardRoutes(app, context) {
     });
   });
 
-  app.get("/api/commands", (req, res) => {
-    const commandsPath = path.join(process.cwd(), "commands");
-    const commands = [];
-    if (fs.existsSync(commandsPath)) {
-        fs.readdirSync(commandsPath).forEach(category => {
-            const catPath = path.join(commandsPath, category);
-            if (fs.statSync(catPath).isDirectory()) {
-                fs.readdirSync(catPath).forEach(file => {
-                    if (file.endsWith(".js")) {
-                        commands.push({ name: file.replace(".js", ""), category });
-                    }
-                });
-            }
+  app.post("/api/admin/execute", express.json(), async (req, res) => {
+    const { command, args, guildId } = req.body;
+
+    try {
+      if (command === "/reset-server") {
+        if (!guildId) {
+          return res.status(400).json({ error: "Guild ID is required" });
+        }
+        
+        db.prepare("DELETE FROM welcome_settings WHERE guildId = ?").run(guildId);
+        db.prepare("DELETE FROM welcome_configs WHERE guildId = ?").run(guildId);
+        db.prepare("DELETE FROM protection_settings WHERE guildId = ?").run(guildId);
+        db.prepare("DELETE FROM ticket_settings WHERE guildId = ?").run(guildId);
+        db.prepare("DELETE FROM leveling_settings WHERE guildId = ?").run(guildId);
+        db.prepare("DELETE FROM azkar_settings WHERE guildId = ?").run(guildId);
+        db.prepare("DELETE FROM command_configs WHERE guildId = ?").run(guildId);
+        db.prepare("DELETE FROM logging_settings WHERE guildId = ?").run(guildId);
+        
+        db.prepare("INSERT INTO activity_logs (guildId, level, message) VALUES (?, ?, ?)")
+          .run(guildId, "WARNING", `System Command: Reset configurations executed by Admin.`);
+
+        return res.json({ 
+          success: true, 
+          message: `Server configurations for guild ${guildId} have been completely reset to factory defaults.` 
         });
+      }
+
+      if (command === "/clone-architecture") {
+        if (!guildId) {
+          return res.status(400).json({ error: "Guild ID is required" });
+        }
+
+        const welcome = db.prepare("SELECT * FROM welcome_settings WHERE guildId = ?").get(guildId) || {};
+        const protection = db.prepare("SELECT * FROM protection_settings WHERE guildId = ?").get(guildId) || {};
+        const tickets = db.prepare("SELECT * FROM ticket_settings WHERE guildId = ?").get(guildId) || {};
+        const leveling = db.prepare("SELECT * FROM leveling_settings WHERE guildId = ?").get(guildId) || {};
+        const azkar = db.prepare("SELECT * FROM azkar_settings WHERE guildId = ?").get(guildId) || {};
+        const logging = db.prepare("SELECT * FROM logging_settings WHERE guildId = ?").get(guildId) || {};
+
+        const blueprint = {
+          welcome,
+          protection,
+          tickets,
+          leveling,
+          azkar,
+          logging
+        };
+
+        const backupName = `Clone Architecture Blueprint - ${new Date().toISOString().slice(0, 10)}`;
+        db.prepare("INSERT INTO backups (guildId, name, data) VALUES (?, ?, ?)")
+          .run(guildId, backupName, JSON.stringify(blueprint));
+
+        return res.json({
+          success: true,
+          message: `Architecture successfully cloned and saved to Backups as [${backupName}].`,
+          blueprint
+        });
+      }
+
+      if (command === "/reload-commands") {
+        const { loadCommands } = await import("./src/lib/commandLoader.js");
+        const { commands, slashCommandsData } = await loadCommands();
+        client.commands = commands;
+        if (client.application) {
+          await client.application.commands.set(slashCommandsData);
+        }
+        return res.json({
+          success: true,
+          message: `Successfully reloaded ${commands.size} application commands dynamically on the bot client.`
+        });
+      }
+
+      if (command === "/system-diagnostic") {
+        const memory = process.memoryUsage();
+        const uptime = process.uptime();
+        const guildsCount = client.guilds.cache.size;
+        const ping = client.isReady() ? client.ws.ping : 0;
+        
+        let dbSize = 0;
+        try {
+          dbSize = fs.existsSync("bot.db") ? fs.statSync("bot.db").size : 0;
+        } catch (_) {}
+
+        const totals = {
+          levelingCount: db.prepare("SELECT COUNT(*) as count FROM leveling").get()?.count || 0,
+          ticketsCount: db.prepare("SELECT COUNT(*) as count FROM tickets").get()?.count || 0,
+          warningsCount: db.prepare("SELECT COUNT(*) as count FROM warnings").get()?.count || 0,
+          backupsCount: db.prepare("SELECT COUNT(*) as count FROM backups").get()?.count || 0,
+        };
+
+        return res.json({
+          success: true,
+          diagnostics: {
+            uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`,
+            memory: `${(memory.heapUsed / 1024 / 1024).toFixed(2)} MB / ${(memory.heapTotal / 1024 / 1024).toFixed(2)} MB`,
+            guildsCount,
+            ping: `${ping}ms`,
+            dbSize: `${(dbSize / 1024 / 1024).toFixed(2)} MB`,
+            nodeVersion: process.version,
+            ...totals
+          }
+        });
+      }
+
+      if (command === "/toggle-maintenance") {
+        const currentMode = db.prepare("SELECT value FROM settings WHERE key = 'maintenance_mode'").get();
+        const nextMode = currentMode?.value === "true" ? "false" : "true";
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('maintenance_mode', ?)")
+          .run(nextMode);
+
+        return res.json({
+          success: true,
+          message: `Maintenance Mode has been toggled to [${nextMode === "true" ? "ENABLED" : "DISABLED"}].`
+        });
+      }
+
+      return res.status(404).json({ error: `Command ${command} not found or unsupported.` });
+    } catch (err) {
+      console.error(`Error running admin command ${command}:`, err);
+      return res.status(500).json({ error: err.message });
     }
-    res.json(commands);
+  });
+
+  app.get("/api/commands", (req, res) => {
+    try {
+      const commandsPath = path.join(process.cwd(), "commands");
+      const commands = [];
+      if (fs.existsSync(commandsPath)) {
+          fs.readdirSync(commandsPath).forEach(category => {
+              const catPath = path.join(commandsPath, category);
+              if (fs.statSync(catPath).isDirectory()) {
+                  fs.readdirSync(catPath).forEach(file => {
+                      if (file.endsWith(".js")) {
+                          commands.push({ name: file.replace(".js", ""), category });
+                      }
+                  });
+              }
+          });
+      }
+      res.json(commands);
+    } catch (error) {
+      console.error("API Error (/api/commands):", error);
+      res.status(500).json({ error: "Failed to load commands" });
+    }
+  });
+
+  app.post("/api/commands/:commandName", express.json(), (req, res) => {
+    const { commandName } = req.params;
+    const config = req.body;
+    try {
+      db.prepare(`
+        INSERT OR REPLACE INTO command_configs (guildId, commandName, alias, allowedRoles, disabledChannels)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(req.session.guildId, commandName, config.alias, config.allowedRoles, config.disabledChannels);
+      res.json({ success: true });
+    } catch (error) {
+      console.error(`API Error (/api/commands/${commandName}):`, error);
+      res.status(500).json({ error: "Failed to update command" });
+    }
   });
 
   app.get("/api/status", (req, res) => {
@@ -1510,7 +2069,7 @@ function setupDashboardRoutes(app, context) {
     try {
       const { guildId } = req.params;
       const prefixRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`prefix_${guildId}`);
-      const prefix = prefixRow ? prefixRow.value : ".";
+      const prefix = prefixRow ? prefixRow.value : "'";
       res.json({ prefix });
     } catch (err) {
       res.status(500).json({ error: err.message });

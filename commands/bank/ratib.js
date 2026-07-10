@@ -1,12 +1,12 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
-import { load, save, settings, logTx, C, n, E, noRoom } from "./utils.js";
+import { load, save, settings, logTx, C, n, E, noRoom, isPremiumUser } from "./utils.js";
 
 export default {
   name: "راتب",
   category: "bank",
   data: new SlashCommandBuilder()
     .setName("راتب")
-    .setDescription("💵 استلم راتبك اليومي"),
+    .setDescription("💵 استلم راتبك اليومي (مضاعف للمشتركين المميزين)"),
 
   async executeInteraction(interaction, context) {
     const { db } = context;
@@ -35,21 +35,37 @@ export default {
       return interaction.reply({ embeds: [E("⏳ انتظار").setDescription(`راتبك القادم بعد **${h}س ${m}د**`)], ephemeral: true });
     }
 
-    const salary = Math.floor(Math.random() * (cfg.salaryMax - cfg.salaryMin + 1)) + cfg.salaryMin;
+    let salary = Math.floor(Math.random() * (cfg.salaryMax - cfg.salaryMin + 1)) + cfg.salaryMin;
+    const premium = isPremiumUser(uid);
+    if (premium) {
+      salary *= 2; // Double salary for premium users
+    }
+
     users[uid].balance = (users[uid].balance || 0) + salary;
     cools[`salary_${uid}`] = now;
     save("users.json", users);
     save("cooldowns.json", cools);
-    logTx(uid, "راتب", salary, "راتب يومي");
+    logTx(uid, "راتب", salary, premium ? "راتب يومي (مضاعف بريميوم)" : "راتب يومي");
 
     db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
       .run(uid, interaction.guildId, salary, salary);
 
-    return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("💵 استلمت راتبك!")
+    const embed = new EmbedBuilder()
+      .setColor(premium ? 0xd4af37 : C)
+      .setTitle(premium ? "🌟 استلمت راتبك المميز (مضاعف بريميوم)!" : "💵 استلمت راتبك!")
       .addFields(
-        { name: "💰 الراتب", value: `+${n(salary)} رون`, inline: true },
-        { name: "💳 رصيدك", value: `${n(users[uid].balance)} رون`, inline: true }
-      ).setTimestamp()] });
+        { name: "💰 الراتب الأساسي", value: `${n(premium ? salary / 2 : salary)} رون`, inline: true },
+        { name: "✨ ميزة البريميوم", value: premium ? "➕ مضاعف نشط (2x)" : "❌ غير نشط (اكتب `'premium buy` للشراء)", inline: true },
+        { name: "💸 الراتب المستلم", value: `**${n(salary)}** رون`, inline: false },
+        { name: "💳 رصيدك الإجمالي", value: `**${n(users[uid].balance)}** رون`, inline: true }
+      )
+      .setTimestamp();
+
+    if (premium) {
+      embed.setDescription("شكراً لدعمك للبوت! تم تفعيل ميزة مضاعف الراتب اليومي الخاصة بالبريميوم بنجاح. 💖");
+    }
+
+    return interaction.reply({ embeds: [embed] });
   },
 
   async executeMessage(message, args, context) {
@@ -78,20 +94,36 @@ export default {
       return message.reply({ embeds: [E("⏳ انتظار").setDescription(`راتبك القادم بعد **${h}س ${m}د**`)] });
     }
 
-    const salary = Math.floor(Math.random() * (cfg.salaryMax - cfg.salaryMin + 1)) + cfg.salaryMin;
+    let salary = Math.floor(Math.random() * (cfg.salaryMax - cfg.salaryMin + 1)) + cfg.salaryMin;
+    const premium = isPremiumUser(uid);
+    if (premium) {
+      salary *= 2;
+    }
+
     users[uid].balance = (users[uid].balance || 0) + salary;
     cools[`salary_${uid}`] = now;
     save("users.json", users);
     save("cooldowns.json", cools);
-    logTx(uid, "راتب", salary, "راتب يومي");
+    logTx(uid, "راتب", salary, premium ? "راتب يومي (مضاعف بريميوم)" : "راتب يومي");
 
     db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
       .run(uid, message.guild.id, salary, salary);
 
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("💵 استلمت راتبك!")
+    const embed = new EmbedBuilder()
+      .setColor(premium ? 0xd4af37 : C)
+      .setTitle(premium ? "🌟 استلمت راتبك المميز (مضاعف بريميوم)!" : "💵 استلمت راتبك!")
       .addFields(
-        { name: "💰 الراتب", value: `+${n(salary)} رون`, inline: true },
-        { name: "💳 رصيدك", value: `${n(users[uid].balance)} رون`, inline: true }
-      ).setTimestamp()] });
+        { name: "💰 الراتب الأساسي", value: `${n(premium ? salary / 2 : salary)} رون`, inline: true },
+        { name: "✨ ميزة البريميوم", value: premium ? "➕ مضاعف نشط (2x)" : "❌ غير نشط (اكتب `'premium buy` للشراء)", inline: true },
+        { name: "💸 الراتب المستلم", value: `**${n(salary)}** رون`, inline: false },
+        { name: "💳 رصيدك الإجمالي", value: `**${n(users[uid].balance)}** رون`, inline: true }
+      )
+      .setTimestamp();
+
+    if (premium) {
+      embed.setDescription("شكراً لدعمك للبوت! تم تفعيل ميزة مضاعف الراتب اليومي الخاصة بالبريميوم بنجاح. 💖");
+    }
+
+    return message.reply({ embeds: [embed] });
   }
 };

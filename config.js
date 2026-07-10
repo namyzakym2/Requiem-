@@ -12,7 +12,9 @@ const config = {
   // مفتاح Gemini API إذا كنت تريد استخدام ميزات الذكاء الاصطناعي
   geminiApiKey: "",
   // سر عشوائي لتأمين الجلسات (يمكنك تركه كما هو أو تغييره)
-  jwtSecret: "requiem-super-secret-key-2026"
+  jwtSecret: "requiem-super-secret-key-2026",
+  // معرف الأونر للسيرفر
+  ownerId: "1071164421222695042"
 };
 export {
   config

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ComponentType } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from "discord.js";
 
 const categoryMap = {
   admin: { name: "🛡️ الإدارة (Admin)", desc: "أوامر مخصصة لإدارة السيرفر، الإعدادات، والتحكم بالبث" },
@@ -85,28 +85,28 @@ export default {
       });
     });
 
-    // Create dropdown select menu
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId("help_category_select")
-      .setPlaceholder("اختر قسماً لعرض أوامره... | Select a category");
-
+    // Create buttons for categories
+    const buttons = [];
     Object.keys(categoryMap).forEach((catKey) => {
       if (catKey === "owner" && !isOwner) return;
-      selectMenu.addOptions(
-        new StringSelectMenuOptionBuilder()
-          .setLabel(categoryMap[catKey].name)
-          .setDescription(categoryMap[catKey].desc.substring(0, 100))
-          .setValue(catKey)
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId(`help_${catKey}`)
+          .setLabel(categoryMap[catKey].name.split(" ")[1] || categoryMap[catKey].name)
+          .setStyle(ButtonStyle.Secondary)
       );
     });
 
-    const row = new ActionRowBuilder().addComponents(selectMenu);
+    const rows = [];
+    for (let i = 0; i < buttons.length; i += 5) {
+      rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
+    }
 
-    const response = await interaction.reply({ embeds: [embed], components: [row] });
+    const response = await interaction.reply({ embeds: [embed], components: rows });
 
-    // Interactive collector for the select menu
+    // Interactive collector for the buttons
     const collector = response.createMessageComponentCollector({
-      componentType: ComponentType.StringSelect,
+      componentType: ComponentType.Button,
       time: 60000
     });
 
@@ -115,7 +115,7 @@ export default {
         return i.reply({ content: "❌ هذه القائمة ليست لك.", ephemeral: true });
       }
 
-      const selectedCategory = i.values[0];
+      const selectedCategory = i.customId.replace("help_", "");
       const categoryCommands = uniqueCommands.filter(c => c.category === selectedCategory);
 
       const catInfo = categoryMap[selectedCategory] || { name: selectedCategory, desc: "" };
@@ -145,12 +145,14 @@ export default {
     });
 
     collector.on("end", async () => {
-      // Disable select menu on timeout
+      // Disable buttons on timeout
       try {
-        const disabledRow = new ActionRowBuilder().addComponents(
-          selectMenu.setDisabled(true)
+        const disabledRows = rows.map(row => 
+          new ActionRowBuilder().addComponents(
+            row.components.map(button => ButtonBuilder.from(button).setDisabled(true))
+          )
         );
-        await interaction.editReply({ components: [disabledRow] }).catch(() => {});
+        await interaction.editReply({ components: disabledRows }).catch(() => {});
       } catch (e) {}
     });
   },

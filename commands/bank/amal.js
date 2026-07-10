@@ -2,7 +2,7 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { load, save, settings, logTx, C, n, E, noRoom } from "./utils.js";
+import { load, save, settings, logTx, C, n, E, noRoom, isPremiumUser } from "./utils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +23,7 @@ export default {
   category: "bank",
   data: new SlashCommandBuilder()
     .setName("عمل")
-    .setDescription("💼 اشتغل — وظيفتك تتحسن بزيادة ثروتك"),
+    .setDescription("💼 اشتغل — وظيفتك تتحسن بزيادة ثروتك (مكافآت ووقت أقل للمشتركين المميزين)"),
 
   async executeInteraction(interaction, context) {
     const { db } = context;
@@ -31,7 +31,11 @@ export default {
     if (cfg.bankRoom !== "" && interaction.channelId !== cfg.bankRoom) return noRoom(interaction);
 
     const uid = interaction.user.id;
-    const cd = (cfg.cooldowns["عمل"] ?? 6) * 3600000;
+    const premium = isPremiumUser(uid);
+    // Cooldown is halved for premium users (e.g., 3 hours instead of 6)
+    const activeCdRate = premium ? 0.5 : 1.0;
+    const cd = (cfg.cooldowns["عمل"] ?? 6) * activeCdRate * 3600000;
+    
     const users = load("users.json");
     const now = Date.now();
 
@@ -47,14 +51,18 @@ export default {
       const rem = cd - (now - users[uid].lastJobTime);
       const h = Math.floor(rem / 3600000);
       const m = Math.floor((rem % 3600000) / 60000);
-      return interaction.reply({ embeds: [E("⏳ انتظر").setDescription(`يمكنك العمل مجدداً بعد **${h}س ${m}د**`)], ephemeral: true });
+      return interaction.reply({ embeds: [E("⏳ انتظر").setDescription(`يمكنك العمل مجدداً بعد **${h}س ${m}د**${premium ? " (ميزة وقت الانتظار النصفي للبريميوم مفعلة! ⚡)" : ""}`)], ephemeral: true });
     }
 
     const jobs = getJobs();
     const totalAssets = (users[uid].balance || 0) + (users[uid].vault || 0);
     const tier = getTier(totalAssets, jobs.tiers);
 
-    const salary = Math.floor(Math.random() * (tier.salary.max - tier.salary.min + 1)) + tier.salary.min;
+    let salary = Math.floor(Math.random() * (tier.salary.max - tier.salary.min + 1)) + tier.salary.min;
+    if (premium) {
+      salary = Math.floor(salary * 1.5); // +50% income for premium
+    }
+
     const msgs = jobs.workMessages[tier.id] || ["عملت وكسبت مالاً"];
     const msg = msgs[Math.floor(Math.random() * msgs.length)];
 
@@ -66,7 +74,7 @@ export default {
     users[uid].totalEarned = (users[uid].totalEarned || 0) + salary;
 
     save("users.json", users);
-    logTx(uid, "عمل", salary, `${tier.id}: ${msg}`);
+    logTx(uid, "عمل", salary, premium ? `${tier.id} (بريميوم): ${msg}` : `${tier.id}: ${msg}`);
 
     // Sync with SQLite db xb currency
     db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
@@ -75,15 +83,23 @@ export default {
     const nextTier = jobs.tiers.find(t => t.minBalance > (users[uid].balance + (users[uid].vault || 0)));
     const needed = nextTier ? nextTier.minBalance - ((users[uid].balance || 0) + (users[uid].vault || 0)) : null;
 
-    return interaction.reply({ embeds: [new EmbedBuilder().setColor(C)
-      .setTitle(`${tier.color} عمل — ${tier.id}`)
+    const embed = new EmbedBuilder()
+      .setColor(premium ? 0xd4af37 : C)
+      .setTitle(`${premium ? "🌟 " : ""}${tier.color} عمل — ${tier.id}${premium ? " (بريميوم)" : ""}`)
       .setDescription(`*${msg}*`)
       .addFields(
-        { name: "💵 الراتب", value: `+${n(salary)} رون`, inline: true },
+        { name: "💵 الراتب المستلم", value: `+${n(salary)} رون ${premium ? "✨(+50% بونص)✨" : ""}`, inline: true },
         { name: "💳 رصيدك", value: `${n(users[uid].balance)} رون`, inline: true },
         { name: needed != null ? `⬆️ للترقي إلى ${nextTier.id}` : "🏆 أعلى مستوى",
           value: needed != null ? `تحتاج **${n(needed)} رون** إضافية` : "وصلت للقمة!", inline: false }
-      ).setTimestamp()] });
+      )
+      .setTimestamp();
+
+    if (premium) {
+      embed.setFooter({ text: "ميزات البريميوم النشطة: +50% راتب | 50% وقت انتظار أقل" });
+    }
+
+    return interaction.reply({ embeds: [embed] });
   },
 
   async executeMessage(message, args, context) {
@@ -92,7 +108,11 @@ export default {
     if (cfg.bankRoom !== "" && message.channelId !== cfg.bankRoom) return;
 
     const uid = message.author.id;
-    const cd = (cfg.cooldowns["عمل"] ?? 6) * 3600000;
+    const premium = isPremiumUser(uid);
+    // Cooldown is halved for premium users (e.g., 3 hours instead of 6)
+    const activeCdRate = premium ? 0.5 : 1.0;
+    const cd = (cfg.cooldowns["عمل"] ?? 6) * activeCdRate * 3600000;
+
     const users = load("users.json");
     const now = Date.now();
 
@@ -108,14 +128,18 @@ export default {
       const rem = cd - (now - users[uid].lastJobTime);
       const h = Math.floor(rem / 3600000);
       const m = Math.floor((rem % 3600000) / 60000);
-      return message.reply({ embeds: [E("⏳ انتظر").setDescription(`يمكنك العمل مجدداً بعد **${h}س ${m}د**`)] });
+      return message.reply({ embeds: [E("⏳ انتظر").setDescription(`يمكنك العمل مجدداً بعد **${h}س ${m}د**${premium ? " (ميزة وقت الانتظار النصفي للبريميوم مفعلة! ⚡)" : ""}`)] });
     }
 
     const jobs = getJobs();
     const totalAssets = (users[uid].balance || 0) + (users[uid].vault || 0);
     const tier = getTier(totalAssets, jobs.tiers);
 
-    const salary = Math.floor(Math.random() * (tier.salary.max - tier.salary.min + 1)) + tier.salary.min;
+    let salary = Math.floor(Math.random() * (tier.salary.max - tier.salary.min + 1)) + tier.salary.min;
+    if (premium) {
+      salary = Math.floor(salary * 1.5);
+    }
+
     const msgs = jobs.workMessages[tier.id] || ["عملت وكسبت مالاً"];
     const msg = msgs[Math.floor(Math.random() * msgs.length)];
 
@@ -126,7 +150,7 @@ export default {
     users[uid].totalEarned = (users[uid].totalEarned || 0) + salary;
 
     save("users.json", users);
-    logTx(uid, "عمل", salary, `${tier.id}: ${msg}`);
+    logTx(uid, "عمل", salary, premium ? `${tier.id} (بريميوم): ${msg}` : `${tier.id}: ${msg}`);
 
     db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
       .run(uid, message.guild.id, salary, salary);
@@ -134,14 +158,22 @@ export default {
     const nextTier = jobs.tiers.find(t => t.minBalance > (users[uid].balance + (users[uid].vault || 0)));
     const needed = nextTier ? nextTier.minBalance - ((users[uid].balance || 0) + (users[uid].vault || 0)) : null;
 
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C)
-      .setTitle(`${tier.color} عمل — ${tier.id}`)
+    const embed = new EmbedBuilder()
+      .setColor(premium ? 0xd4af37 : C)
+      .setTitle(`${premium ? "🌟 " : ""}${tier.color} عمل — ${tier.id}${premium ? " (بريميوم)" : ""}`)
       .setDescription(`*${msg}*`)
       .addFields(
-        { name: "💵 الراتب", value: `+${n(salary)} رون`, inline: true },
+        { name: "💵 الراتب المستلم", value: `+${n(salary)} رون ${premium ? "✨(+50% بونص)✨" : ""}`, inline: true },
         { name: "💳 رصيدك", value: `${n(users[uid].balance)} رون`, inline: true },
         { name: needed != null ? `⬆️ للترقي إلى ${nextTier.id}` : "🏆 أعلى مستوى",
           value: needed != null ? `تحتاج **${n(needed)} رون** إضافية` : "وصلت للقمة!", inline: false }
-      ).setTimestamp()] });
+      )
+      .setTimestamp();
+
+    if (premium) {
+      embed.setFooter({ text: "ميزات البريميوم النشطة: +50% راتب | 50% وقت انتظار أقل" });
+    }
+
+    return message.reply({ embeds: [embed] });
   }
 };

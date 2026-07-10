@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X, Shield, ChevronDown, LogOut, Sparkles, Server, User, Globe, Activity, Check } from 'lucide-react';
+import { Menu, X, Shield, ChevronDown, LogOut, Sparkles, Server, User, Globe, Activity, Check, Command } from 'lucide-react';
 
 export default function Navbar({
   guilds,
@@ -11,7 +11,8 @@ export default function Navbar({
   mobileOpen,
   setMobileOpen,
   lang,
-  setLang
+  setLang,
+  onOpenPalette
 }) {
   const [guildDropdown, setGuildDropdown] = useState(false);
   const [userDropdown, setUserDropdown] = useState(false);
@@ -159,6 +160,17 @@ export default function Navbar({
 
         {/* Right Section: Language & User Profile */}
         <div className="flex items-center gap-2">
+          {/* Admin Command Palette Trigger */}
+          <button
+            onClick={() => onOpenPalette && onOpenPalette()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/80 border border-white/10 hover:border-indigo-500/30 text-xs text-zinc-300 hover:text-white transition-all font-semibold cursor-pointer"
+            title="Open Admin Command Palette (Ctrl+K)"
+          >
+            <Command size={14} className="text-purple-400" />
+            <span className="hidden sm:inline">{lang === 'ar' ? 'لوحة الأوامر' : 'Command Palette'}</span>
+            <kbd className="hidden md:inline text-[9px] font-mono opacity-50 bg-black px-1 rounded border border-white/10">⌘K</kbd>
+          </button>
+
           {/* Language Switcher */}
           <button
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}

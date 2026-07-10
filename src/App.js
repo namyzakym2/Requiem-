@@ -4,9 +4,11 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Toast from './components/Toast';
 import LoginView from './components/LoginView';
+import CommandPalette from './components/CommandPalette';
 import { Loader2, Bot } from 'lucide-react';
 
-const OverviewTab = lazy(() => import('./components/tabs/OverviewTab'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const SettingsTab = lazy(() => import('./components/tabs/SettingsTab'));
 const ProtectionTab = lazy(() => import('./components/tabs/ProtectionTab'));
 const AutoModTab = lazy(() => import('./components/tabs/AutoModTab'));
 const WelcomeTab = lazy(() => import('./components/tabs/WelcomeTab'));
@@ -41,10 +43,22 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState('ar');
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
+
+  useEffect(() => {
+    const handleShortcut = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
 
   useEffect(() => {
     // Check User Authentication
@@ -80,14 +94,15 @@ export default function App() {
       });
   }, []);
 
-  const handleDemoLogin = () => {
-    setUser({
-      id: '888888888888888888',
-      username: 'King_User 👑',
-      avatar: null,
-      isDemo: true
-    });
-  };
+    const handleDemoLogin = () => {
+      setUser({
+        id: '888888888888888888',
+        username: 'King_User 👑',
+        avatar: null,
+        isDemo: true,
+        isPremium: true // Simulating premium status
+      });
+    };
 
   const handleLogout = () => {
     localStorage.removeItem('requiem_token');
@@ -138,6 +153,7 @@ export default function App() {
         setMobileOpen={setMobileOpen}
         lang={lang}
         setLang={setLang}
+        onOpenPalette={() => setIsPaletteOpen(true)}
       />
 
       {/* Main Dashboard Workspace */}
@@ -157,7 +173,11 @@ export default function App() {
           
           <Suspense fallback={<div className="p-4 text-center text-zinc-500">جاري التحميل...</div>}>
             {activeTab === 'Overview' && (
-              <OverviewTab guild={selectedGuild} onSave={showToast} lang={lang} />
+              <Dashboard guild={selectedGuild} lang={lang} isPremium={user?.isPremium} />
+            )}
+            
+            {activeTab === 'Settings' && (
+              <SettingsTab guild={selectedGuild} onSave={showToast} lang={lang} />
             )}
 
             {activeTab === 'Protection' && (
@@ -222,6 +242,16 @@ export default function App() {
 
       {/* Toast Notification Container */}
       <Toast toast={toast} onClose={() => setToast(null)} />
+
+      {/* Admin Command Palette */}
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        selectedGuild={selectedGuild}
+        setActiveTab={setActiveTab}
+        showToast={showToast}
+        lang={lang}
+      />
 
     </div>
   );

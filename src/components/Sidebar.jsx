@@ -25,7 +25,8 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
     {
       title: isAr ? 'الرئيسية' : 'GENERAL',
       items: [
-        { id: 'Overview', labelAr: 'اللوحة العامة', labelEn: 'Overview', icon: Activity, badge: 'Main' },
+        { id: 'Overview', labelAr: 'لوحة التحكم', labelEn: 'Dashboard', icon: Activity, badge: 'Main' },
+        { id: 'Settings', labelAr: 'الإعدادات العامة', labelEn: 'Settings', icon: Sliders },
       ]
     },
     {

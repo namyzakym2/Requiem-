@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { EmbedBuilder } from 'discord.js';
+import db from '../../src/lib/db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,8 +41,18 @@ export const isBanned = (uid) => !!load('bans.json')[uid];
 
 export const settings = () => {
     const s = load('settings.json');
+    let bankRoom = s.bankRoom || '';
+    
+    if (global.currentChannelId && bankRoom) {
+        // Support splitting by comma, space, or vertical bar
+        const allowedRooms = bankRoom.split(/[,\s|]+/).map(id => id.trim()).filter(Boolean);
+        if (allowedRooms.includes(global.currentChannelId)) {
+            bankRoom = global.currentChannelId;
+        }
+    }
+
     return {
-        bankRoom:    s.bankRoom    || '',
+        bankRoom,
         salaryMin:   s.salaryMin   ?? 500,
         salaryMax:   s.salaryMax   ?? 20000,
         transferFee: s.transferFee ?? 0.05,
@@ -58,3 +69,15 @@ export const E = (title) => {
 
 export const noRoom  = (i) => i.reply({ embeds: [E('❌ خطأ').setDescription('هذا الأمر يعمل فقط في غرفة البنك.')], ephemeral: true });
 export const noAdmin = (i) => i.reply({ embeds: [E('❌ خطأ').setDescription('هذا الأمر للمسؤولين فقط.')], ephemeral: true });
+
+export const isPremiumUser = (userId) => {
+    try {
+        const row = db.prepare("SELECT expiresAt FROM premium_users WHERE userId = ?").get(userId);
+        if (row && row.expiresAt) {
+            return new Date(row.expiresAt) > new Date();
+        }
+    } catch (e) {
+        console.error("Error checking premium status in bank utils:", e);
+    }
+    return false;
+};
