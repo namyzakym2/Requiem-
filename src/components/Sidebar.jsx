@@ -15,7 +15,8 @@ import {
   Flame,
   ChevronRight,
   Bot,
-  Radio
+  Radio,
+  Server
 } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobileOpen, lang }) {
@@ -52,6 +53,7 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
       title: isAr ? 'السجلات والنسخ' : 'LOGS & UTILITY',
       items: [
         { id: 'Logging', labelAr: 'السجلات واللوج', labelEn: 'Audit Logs', icon: Terminal },
+        { id: 'Nodes', labelAr: 'عقد البوتات', labelEn: 'Server Nodes', icon: Server, badge: 'Nodes' },
         { id: 'Logs', labelAr: 'سجلات النشاط', labelEn: 'Activity Logs', icon: Activity },
         { id: 'Commands', labelAr: 'إدارة الأوامر', labelEn: 'Command Manager', icon: Bot },
         { id: 'Aliases', labelAr: 'الأوامر والغرف', labelEn: 'Commands & Rooms', icon: Sliders },

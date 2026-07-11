@@ -144,25 +144,50 @@ function isCommandAllowed(guildId, commandName, channelId) {
   }
 }
 
+const voiceStates = new Map();
+
+async function addVoiceXP(userId, guildId, amount) {
+  try {
+    const row = db.prepare("SELECT * FROM leveling WHERE userId = ? AND guildId = ?").get(userId, guildId);
+    if (!row) {
+      db.prepare("INSERT INTO leveling (userId, guildId, xp, level, xb, voice_xp, voice_level) VALUES (?, ?, ?, 0, 0, ?, 0)").run(userId, guildId, amount, amount);
+      return;
+    }
+
+    let currentVoiceXp = row.voice_xp || 0;
+    let newVoiceXp = currentVoiceXp + amount;
+    let newVoiceLevel = Math.floor(newVoiceXp / 650);
+
+    let newXP = (row.xp || 0) + amount;
+    let newLevel = Math.floor(newXP / 650);
+
+    db.prepare("UPDATE leveling SET xp = ?, level = ?, voice_xp = ?, voice_level = ? WHERE userId = ? AND guildId = ?")
+      .run(newXP, newLevel, newVoiceXp, newVoiceLevel, userId, guildId);
+  } catch (err) {
+    console.error("addVoiceXP error:", err);
+  }
+}
+
 async function addXP(userId, guildId, amount, guild, author, member, channel) {
   try {
     const row = db.prepare("SELECT * FROM leveling WHERE userId = ? AND guildId = ?").get(userId, guildId);
     if (!row) {
-      db.prepare("INSERT INTO leveling (userId, guildId, xp, level, xb) VALUES (?, ?, ?, 0, 0)").run(userId, guildId, amount);
+      db.prepare("INSERT INTO leveling (userId, guildId, xp, level, xb, text_xp, text_level) VALUES (?, ?, ?, 0, 0, ?, 0)").run(userId, guildId, amount, amount);
       return;
     }
 
-    let newXP = row.xp + amount;
-    let newLevel = row.level;
-    const nextLevelXP = (newLevel + 1) * 300;
+    let currentTextXp = row.text_xp || row.xp || 0;
+    let newTextXp = currentTextXp + amount;
+    let newTextLevel = Math.floor(newTextXp / 650);
 
-    if (newXP >= nextLevelXP) {
-      newLevel++;
-      newXP -= nextLevelXP;
+    let newXP = (row.xp || 0) + amount;
+    let newLevel = Math.floor(newXP / 650);
 
-      db.prepare("UPDATE leveling SET xp = ?, level = ? WHERE userId = ? AND guildId = ?").run(newXP, newLevel, userId, guildId);
+    if (newTextLevel > (row.text_level || 0)) {
+      db.prepare("UPDATE leveling SET xp = ?, level = ?, text_xp = ?, text_level = ? WHERE userId = ? AND guildId = ?")
+        .run(newXP, newLevel, newTextXp, newTextLevel, userId, guildId);
 
-      const levelSettings = db.prepare("SELECT * FROM level_settings WHERE guildId = ?").get(guildId);
+      const levelSettings = db.prepare("SELECT * FROM leveling_settings WHERE guildId = ?").get(guildId);
       if (levelSettings?.status === "off") return;
 
       const notifyChannel = levelSettings?.channelId ? client.channels.cache.get(levelSettings.channelId) : channel;
@@ -170,12 +195,13 @@ async function addXP(userId, guildId, amount, guild, author, member, channel) {
         const msg = levelSettings?.message || "🎉 مبروك يا {user}! لقد وصلت إلى المستوى **{level}**!";
         const formattedMsg = msg
           .replace(/{user}/g, `<@${userId}>`)
-          .replace(/{level}/g, newLevel)
-          .replace(/{xp}/g, newXP);
+          .replace(/{level}/g, newTextLevel)
+          .replace(/{xp}/g, newTextXp);
         await notifyChannel.send(formattedMsg).catch(() => {});
       }
     } else {
-      db.prepare("UPDATE leveling SET xp = ? WHERE userId = ? AND guildId = ?").run(newXP, userId, guildId);
+      db.prepare("UPDATE leveling SET xp = ?, text_xp = ? WHERE userId = ? AND guildId = ?")
+        .run(newXP, newTextXp, userId, guildId);
     }
   } catch (err) {
     console.error("addXP error:", err);
@@ -330,7 +356,7 @@ client.on("messageCreate", async (message) => {
       }
 
       const context = {
-        client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
+        client, db, Canvas, createCanvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
         OWNER_ID, OWNER_USERNAME, PREFIX: currentPrefix, logEvent, logCurrencyTransaction,
         isCommandAllowed, cooldowns, evaluationStates, mafiaGames, activeGames,
         pendingTransfers, lastAzkarSent, spamMap, raidMap, createBackup, restoreBackup
@@ -369,7 +395,7 @@ client.on("interactionCreate", async (interaction) => {
     const currentPrefix = prefixSetting ? prefixSetting.value : PREFIX;
 
     const context = {
-      client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
+      client, db, Canvas, createCanvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
       OWNER_ID, OWNER_USERNAME, PREFIX: currentPrefix, logEvent, logCurrencyTransaction,
       isCommandAllowed, cooldowns, evaluationStates, mafiaGames, activeGames,
       pendingTransfers, lastAzkarSent, spamMap, raidMap, createBackup, restoreBackup
@@ -425,6 +451,33 @@ client.on("interactionCreate", async (interaction) => {
 
     if (interaction.isButton()) {
       const { customId, user, guildId } = interaction;
+      if (customId === "suggest_approve" || customId === "suggest_decline" || customId === "suggest_reset") {
+        if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+          return interaction.reply({ content: "❌ هذا الإجراء للمسؤولين فقط.", ephemeral: true });
+        }
+
+        const embed = EmbedBuilder.from(interaction.message.embeds[0]);
+        let status = "⏳ قيد الانتظار";
+        let color = 16776960;
+
+        if (customId === "suggest_approve") {
+          status = "✅ مقبول";
+          color = 5763719;
+        } else if (customId === "suggest_decline") {
+          status = "❌ مرفوض";
+          color = 15548997;
+        }
+
+        embed.setFields(
+          { name: "الحالة", value: status, inline: true },
+          { name: "بواسطة", value: `<@${user.id}>`, inline: true }
+        );
+        embed.setColor(color);
+
+        await interaction.message.edit({ embeds: [embed] });
+        return interaction.reply({ content: `✅ تم تحديث حالة الاقتراح إلى: **${status}**`, ephemeral: true });
+      }
+
       if (customId === "bc_subscribe_btn") {
         const COST = 10000000;
         const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(user.id, guildId);
@@ -946,7 +999,6 @@ client.on("interactionCreate", async (interaction) => {
   } catch (err) {
     console.error("Error in interactionCreate handler:", err);
   }
-  }
 });
 
 client.on("messageReactionAdd", async (reaction, user) => {
@@ -1015,17 +1067,203 @@ client.on("messageReactionRemove", async (reaction, user) => {
 
 client.on(Events.GuildMemberAdd, async (member) => {
   try {
-    const bots = db.prepare("SELECT * FROM broadcast_bots WHERE guildId = ?").all(member.guild.id);
-    if (bots.length === 0) return;
-    const settings = db.prepare("SELECT message FROM broadcast_settings WHERE guildId = ?").get(member.guild.id);
-    const messageTemplate = settings?.message || "Hello {user}!";
-    const message = messageTemplate.replace(/{user}/g, `<@${member.id}>`);
-    
-    for (const bot of bots) {
-      axios.post(bot.webhookUrl, { content: message }).catch(console.error);
+    // 1. Assign auto-roles on join
+    const autoRoles = [];
+    try {
+      const dbRoles = db.prepare("SELECT roleId FROM auto_roles WHERE guildId = ?").all(member.guild.id) || [];
+      for (const r of dbRoles) {
+        if (r.roleId) autoRoles.push(r.roleId);
+      }
+    } catch (e) {
+      console.error("Error fetching from auto_roles:", e);
+    }
+
+    try {
+      const dbConfig = db.prepare("SELECT roleId FROM autorole_configs WHERE guildId = ?").get(member.guild.id);
+      if (dbConfig?.roleId) {
+        autoRoles.push(dbConfig.roleId);
+      }
+    } catch (e) {
+      console.error("Error fetching from autorole_configs:", e);
+    }
+
+    const uniqueRoles = [...new Set(autoRoles)];
+    for (const rId of uniqueRoles) {
+      try {
+        const roleObj = member.guild.roles.cache.get(rId);
+        if (roleObj) {
+          await member.roles.add(roleObj).catch((err) => console.error(`Failed to assign auto role ${rId} to ${member.user.tag}:`, err));
+        }
+      } catch (err) {
+        console.error(`Error adding role ${rId}:`, err);
+      }
+    }
+
+    // 2. Welcome message to Discord channel
+    try {
+      const welcome = db.prepare("SELECT * FROM welcome_settings WHERE guildId = ?").get(member.guild.id);
+      const welcomeConfig = db.prepare("SELECT * FROM welcome_configs WHERE guildId = ?").get(member.guild.id);
+
+      const channelId = welcome?.channelId || welcomeConfig?.channelId;
+      if (channelId && welcome?.status !== "off" && welcome?.enabled !== 0) {
+        const channel = member.guild.channels.cache.get(channelId) || await member.guild.channels.fetch(channelId).catch(() => null);
+        if (channel) {
+          // Prepare formatting variables
+          const memberCount = member.guild.memberCount;
+          const guildName = member.guild.name;
+          const replacePlaceholders = (text) => {
+            if (!text) return "";
+            return text
+              .replace(/{user}/g, `<@${member.id}>`)
+              .replace(/{guild}/g, guildName)
+              .replace(/{server}/g, guildName)
+              .replace(/{memberCount}/g, memberCount.toString());
+          };
+
+          const embedTitle = welcome?.title ? replacePlaceholders(welcome.title) : "أهلاً بك في السيرفر! 🎉";
+          const embedDesc = welcome?.description ? replacePlaceholders(welcome.description) : (welcomeConfig?.message ? replacePlaceholders(welcomeConfig.message) : `مرحباً بك <@${member.id}> في **${guildName}**! أنت العضو رقم #${memberCount}.`);
+          const embedColor = welcome?.embedColor || "#8b5cf6";
+          const embedImage = welcome?.imageUrl || "";
+
+          const embed = new EmbedBuilder()
+            .setTitle(embedTitle)
+            .setDescription(embedDesc)
+            .setColor(embedColor)
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setTimestamp();
+
+          if (embedImage) {
+            embed.setImage(embedImage);
+          }
+
+          await channel.send({ content: `<@${member.id}>`, embeds: [embed] }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error("Error in sending welcome message:", err);
+    }
+
+    // 3. Webhook broadcast if any
+    try {
+      const bots = db.prepare("SELECT * FROM broadcast_bots WHERE guildId = ?").all(member.guild.id);
+      if (bots && bots.length > 0) {
+        const settings = db.prepare("SELECT message FROM broadcast_settings WHERE guildId = ?").get(member.guild.id);
+        const messageTemplate = settings?.message || "Hello {user}!";
+        const message = messageTemplate.replace(/{user}/g, `<@${member.id}>`);
+        
+        for (const bot of bots) {
+          axios.post(bot.webhookUrl, { content: message }).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error("Error in guildMemberAdd broadcast:", err);
     }
   } catch (err) {
-    console.error("Error in guildMemberAdd broadcast:", err);
+    console.error("Critical error in GuildMemberAdd event:", err);
+  }
+});
+
+client.on(Events.GuildMemberRemove, async (member) => {
+  try {
+    const leave = db.prepare("SELECT * FROM leave_settings WHERE guildId = ?").get(member.guild.id);
+    if (leave && leave.channelId && leave.enabled !== 0) {
+      const channel = member.guild.channels.cache.get(leave.channelId) || await member.guild.channels.fetch(leave.channelId).catch(() => null);
+      if (channel) {
+        const memberCount = member.guild.memberCount;
+        const guildName = member.guild.name;
+        
+        const replacePlaceholders = (text) => {
+          if (!text) return "";
+          return text
+            .replace(/{user}/g, `${member.user.tag}`)
+            .replace(/{guild}/g, guildName)
+            .replace(/{server}/g, guildName)
+            .replace(/{memberCount}/g, memberCount.toString());
+        };
+
+        const defaultMsg = "👋 وداعاً يا {user}، نتمنى لك التوفيق! لقد غادرت **{guild}** (العضو رقم #{memberCount}). 💔";
+        const embedDesc = leave.message ? replacePlaceholders(leave.message) : replacePlaceholders(defaultMsg);
+
+        const embed = new EmbedBuilder()
+          .setTitle("وداعاً! 💔")
+          .setDescription(embedDesc)
+          .setColor("#ef4444")
+          .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+          .setTimestamp();
+
+        await channel.send({ embeds: [embed] }).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.error("Error in GuildMemberRemove event:", err);
+  }
+});
+
+client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+  try {
+    const member = newState.member || oldState.member;
+    if (!member || member.user.bot) return;
+
+    const userId = member.id;
+    const guildId = member.guild.id;
+
+    // Voice state logging
+    const logSettings = db.prepare("SELECT voiceStateUpdateChannelId FROM logging_settings WHERE guildId = ?").get(guildId);
+    if (logSettings?.voiceStateUpdateChannelId) {
+      const channel = client.channels.cache.get(logSettings.voiceStateUpdateChannelId);
+      if (channel) {
+        let title = "Voice State Update";
+        let description = "";
+        let color = 5793266;
+
+        if (!oldState.channelId && newState.channelId) {
+          title = "🗣️ انضمام لقناة صوتية";
+          description = `العضو <@${userId}> انضم إلى القناة الصوتية <#${newState.channelId}>`;
+          color = 3066993;
+        } else if (oldState.channelId && !newState.channelId) {
+          title = "🔇 مغادرة قناة صوتية";
+          description = `العضو <@${userId}> غادر القناة الصوتية <#${oldState.channelId}>`;
+          color = 15158332;
+        } else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+          title = "🔄 انتقال بين قنوات صوتية";
+          description = `العضو <@${userId}> انتقل من القناة <#${oldState.channelId}> إلى القناة <#${newState.channelId}>`;
+          color = 10181046;
+        }
+
+        if (description) {
+          const embed = new EmbedBuilder()
+            .setTitle(title)
+            .setDescription(description)
+            .setColor(color)
+            .setTimestamp();
+          await channel.send({ embeds: [embed] }).catch(() => {});
+        }
+      }
+    }
+
+    // Voice XP tracking
+    const key = `${userId}-${guildId}`;
+    if (!oldState.channelId && newState.channelId) {
+      voiceStates.set(key, Date.now());
+    } else if (oldState.channelId && !newState.channelId) {
+      const joinTime = voiceStates.get(key);
+      if (joinTime) {
+        const durationSec = (Date.now() - joinTime) / 1000;
+        const xpToGive = Math.max(1, Math.floor(durationSec / 10));
+        await addVoiceXP(userId, guildId, xpToGive);
+        voiceStates.delete(key);
+      }
+    } else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+      const joinTime = voiceStates.get(key);
+      if (joinTime) {
+        const durationSec = (Date.now() - joinTime) / 1000;
+        const xpToGive = Math.max(1, Math.floor(durationSec / 10));
+        await addVoiceXP(userId, guildId, xpToGive);
+      }
+      voiceStates.set(key, Date.now());
+    }
+  } catch (err) {
+    console.error("Error in VoiceStateUpdate listener:", err);
   }
 });
 
@@ -1414,11 +1652,45 @@ function setupDashboardRoutes(app, context) {
       const { guildId } = req.params;
       let welcome = db.prepare("SELECT * FROM welcome_settings WHERE guildId = ?").get(guildId);
       if (!welcome) {
-        welcome = { guildId, channelId: null, message: "Welcome {user} to {server}!", imageEnabled: 1, dmEnabled: 0, dmMessage: "Welcome to {server}!" };
-        db.prepare("INSERT INTO welcome_settings (guildId, channelId, message, imageEnabled, dmEnabled, dmMessage) VALUES (?, ?, ?, ?, ?, ?)").run(guildId, null, welcome.message, 1, 0, welcome.dmMessage);
+        welcome = {
+          guildId,
+          channelId: null,
+          message: "👋 أهلاً بك يا {user} في السيرفر! 🎉",
+          imageEnabled: 1,
+          dmEnabled: 0,
+          dmMessage: "Welcome to {server}!",
+          status: "on",
+          title: "أهلاً بك في السيرفر! 🎉",
+          description: "مرحباً بك {user} في {guild}! أنت العضو رقم #{memberCount}. نتمنى لك وقتاً ممتعاً!",
+          embedColor: "#8b5cf6",
+          imageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60"
+        };
+        db.prepare(`
+          INSERT INTO welcome_settings (guildId, channelId, message, imageEnabled, dmEnabled, dmMessage, status, title, description, embedColor, imageUrl)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          guildId,
+          null,
+          welcome.message,
+          1,
+          0,
+          welcome.dmMessage,
+          welcome.status,
+          welcome.title,
+          welcome.description,
+          welcome.embedColor,
+          welcome.imageUrl
+        );
+      } else {
+        welcome.status = welcome.status || 'on';
+        welcome.title = welcome.title || 'أهلاً بك في السيرفر! 🎉';
+        welcome.description = welcome.description || 'مرحباً بك {user} في {guild}! أنت العضو رقم #{memberCount}. نتمنى لك وقتاً ممتعاً!';
+        welcome.embedColor = welcome.embedColor || '#8b5cf6';
+        welcome.imageUrl = welcome.imageUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60';
       }
       res.json(welcome);
     } catch (err) {
+      console.error("GET welcome settings error:", err);
       res.status(500).json({ error: "Failed to fetch welcome settings" });
     }
   });
@@ -1426,10 +1698,37 @@ function setupDashboardRoutes(app, context) {
   app.post("/api/guilds/:guildId/welcome", express.json(), (req, res) => {
     try {
       const { guildId } = req.params;
-      const { channelId, message, imageEnabled, dmEnabled, dmMessage } = req.body;
-      db.prepare("INSERT OR REPLACE INTO welcome_settings (guildId, channelId, message, imageEnabled, dmEnabled, dmMessage) VALUES (?, ?, ?, ?, ?, ?)").run(guildId, channelId, message, imageEnabled ? 1 : 0, dmEnabled ? 1 : 0, dmMessage);
+      const { channelId, message, imageEnabled, dmEnabled, dmMessage, status, title, description, embedColor, imageUrl } = req.body;
+      db.prepare(`
+        INSERT INTO welcome_settings (guildId, channelId, message, imageEnabled, dmEnabled, dmMessage, status, title, description, embedColor, imageUrl)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(guildId) DO UPDATE SET
+          channelId = excluded.channelId,
+          message = excluded.message,
+          imageEnabled = excluded.imageEnabled,
+          dmEnabled = excluded.dmEnabled,
+          dmMessage = excluded.dmMessage,
+          status = excluded.status,
+          title = excluded.title,
+          description = excluded.description,
+          embedColor = excluded.embedColor,
+          imageUrl = excluded.imageUrl
+      `).run(
+        guildId,
+        channelId || "",
+        message || "Welcome {user} to {server}!",
+        imageEnabled ? 1 : 0,
+        dmEnabled ? 1 : 0,
+        dmMessage || "Welcome to {server}!",
+        status || "on",
+        title || "أهلاً بك في السيرفر! 🎉",
+        description || "مرحباً بك {user} في {guild}! أنت العضو رقم #{memberCount}. نتمنى لك وقتاً ممتعاً!",
+        embedColor || "#8b5cf6",
+        imageUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60"
+      );
       res.json({ success: true });
     } catch (err) {
+      console.error("POST welcome settings error:", err);
       res.status(500).json({ error: "Failed to update welcome settings" });
     }
   });
@@ -1990,7 +2289,7 @@ function setupDashboardRoutes(app, context) {
   app.get("/api/auth/callback", async (req, res) => {
     const { code, state: guildId } = req.query;
     if (!code) return res.status(400).send("Missing code");
-    let appUrl = APP_URL || "";
+    let appUrl = APP_URL || `${req.protocol}://${req.get('host')}`;
     appUrl = appUrl.replace(/\/$/, "");
     try {
       const REDIRECT_URI = `${appUrl}/api/auth/callback`;
@@ -2119,7 +2418,8 @@ function setupDashboardRoutes(app, context) {
       const { guildId } = req.params;
       const categories = db.prepare("SELECT * FROM ticket_categories WHERE guildId = ?").all(guildId) || [];
       const logs = db.prepare("SELECT * FROM ticket_logs WHERE guildId = ? ORDER BY createdAt DESC LIMIT 20").all(guildId) || [];
-      res.json({ categories, logs });
+      const settings = db.prepare("SELECT * FROM ticket_settings WHERE guildId = ?").get(guildId) || { supportRoleId: "", imageUrl: "" };
+      res.json({ categories, logs, settings });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -2128,9 +2428,16 @@ function setupDashboardRoutes(app, context) {
   app.post("/api/guilds/:guildId/tickets", express.json(), (req, res) => {
     try {
       const { guildId } = req.params;
-      const { name, roleId, categoryId } = req.body;
+      const { name, roleId, categoryId, supportRoleId, imageUrl } = req.body;
       if (name && roleId) {
         db.prepare("INSERT INTO ticket_categories (guildId, name, roleId, categoryId) VALUES (?, ?, ?, ?)").run(guildId, name, roleId, categoryId || "");
+      }
+      if (supportRoleId !== undefined || imageUrl !== undefined) {
+        const existing = db.prepare("SELECT * FROM ticket_settings WHERE guildId = ?").get(guildId);
+        const finalRoleId = supportRoleId !== undefined ? supportRoleId : (existing?.supportRoleId || "");
+        const finalImageUrl = imageUrl !== undefined ? imageUrl : (existing?.imageUrl || "");
+        db.prepare("INSERT INTO ticket_settings (guildId, supportRoleId, imageUrl) VALUES (?, ?, ?) ON CONFLICT(guildId) DO UPDATE SET supportRoleId = ?, imageUrl = ?")
+          .run(guildId, finalRoleId, finalImageUrl, finalRoleId, finalImageUrl);
       }
       res.json({ success: true });
     } catch (err) {
@@ -2282,6 +2589,31 @@ function setupDashboardRoutes(app, context) {
 
   app.get("/api/broadcast/tokens", (req, res) => {
     res.json(botManager.getAllBots());
+  });
+
+  // Node Management Endpoints
+  app.get("/api/nodes", (req, res) => {
+    const bots = botManager.getAllBots();
+    const nodes = bots.map(bot => ({
+      id: bot.id,
+      username: bot.username || `Bot #${bot.id}`,
+      status: bot.status,
+      successCount: bot.successCount || 0,
+      failCount: bot.failCount || 0,
+      lastUsed: bot.lastUsed,
+      clientId: bot.clientId
+    }));
+    res.json(nodes);
+  });
+
+  app.post("/api/nodes/:id/reset", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await botManager.resetBot(id);
+      res.json(result);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
   });
 
   app.post("/api/broadcast/tokens", express.json(), async (req, res) => {

@@ -3,35 +3,51 @@ import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, But
 export default {
   name: "suggest-settings",
   category: "admin",
-  data: new SlashCommandBuilder().setName("suggest-settings").setDescription("إعدادات الاقتراحات (Admin Only)").addChannelOption((option) => option.setName("channel").setDescription("القناة التي ستظهر فيها الاقتراحات").setRequired(true)),
+  data: new SlashCommandBuilder()
+    .setName("suggest-settings")
+    .setDescription("إعدادات الاقتراحات (Admin Only)")
+    .addChannelOption((option) => option.setName("channel").setDescription("القناة التي ستظهر فيها الاقتراحات").setRequired(true))
+    .addBooleanOption((option) => option.setName("enabled").setDescription("تفعيل أو تعطيل نظام الاقتراحات").setRequired(false)),
   async executeInteraction(interaction, context) {
-    const {
-      client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
-      OWNER_ID, OWNER_USERNAME, PREFIX, logEvent, logCurrencyTransaction,
-      isCommandAllowed, cooldowns, evaluationStates, mafiaGames, activeGames,
-      pendingTransfers, lastAzkarSent, spamMap, raidMap
-    } = context;
+    const { db } = context;
+    const { guild, options, memberPermissions } = interaction;
 
-    let { commandName, user, guildId, guild, channel } = interaction;
-    if (commandName === "suggest-settings") {
-        if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-          return interaction.reply({ content: "❌ هذا الأمر للمسؤولين فقط.", ephemeral: true });
-        }
-        const channel2 = interaction.options.getChannel("channel", true);
-        db.prepare("INSERT OR REPLACE INTO suggestion_settings (guildId, channelId, enabled) VALUES (?, ?, ?)").run(guild.id, channel2.id, 1);
-        await interaction.reply({ content: `✅ تم تحديد قناة الاقتراحات: ${channel2}`, ephemeral: true });
-      }
+    if (!memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+      return interaction.reply({ content: "❌ هذا الأمر للمسؤولين فقط.", ephemeral: true });
+    }
+
+    const suggestionChannel = options.getChannel("channel", true);
+    const isEnabled = options.getBoolean("enabled") ?? true;
+
+    db.prepare("INSERT OR REPLACE INTO suggestion_settings (guildId, channelId, enabled) VALUES (?, ?, ?)")
+      .run(guild.id, suggestionChannel.id, isEnabled ? 1 : 0);
+
+    const embed = new EmbedBuilder()
+      .setTitle("⚙️ إعدادات الاقتراحات")
+      .setDescription(`تم تحديث إعدادات الاقتراحات بنجاح.`)
+      .addFields(
+        { name: "القناة", value: `${suggestionChannel}`, inline: true },
+        { name: "الحالة", value: isEnabled ? "✅ مفعل" : "❌ معطل", inline: true }
+      )
+      .setColor(isEnabled ? 5763719 : 15548997)
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
   },
   async executeMessage(message, args, context) {
-    const {
-      client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
-      OWNER_ID, OWNER_USERNAME, PREFIX, logEvent, logCurrencyTransaction,
-      isCommandAllowed, cooldowns, evaluationStates, mafiaGames, activeGames,
-      pendingTransfers, lastAzkarSent, spamMap, raidMap
-    } = context;
+    const { db, PREFIX } = context;
+    const { guild, member, channel, mentions } = message;
 
-    const guildId = message.guild.id;
-    const commandName = "suggest-settings";
-    
+    if (!member.permissions.has(PermissionFlagsBits.Administrator)) return;
+
+    const targetChannel = mentions.channels.first();
+    if (!targetChannel) {
+        return message.reply(`❌ يرجى منشن القناة. مثال: \`${PREFIX}suggest-settings #suggestions\``);
+    }
+
+    db.prepare("INSERT OR REPLACE INTO suggestion_settings (guildId, channelId, enabled) VALUES (?, ?, ?)")
+      .run(guild.id, targetChannel.id, 1);
+
+    await message.reply(`✅ تم تحديد قناة الاقتراحات: ${targetChannel} وتفعيل النظام.`);
   }
 };

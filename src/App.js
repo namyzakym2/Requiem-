@@ -21,6 +21,7 @@ const AiTab = lazy(() => import('./components/tabs/AiTab'));
 const AzkarTab = lazy(() => import('./components/tabs/AzkarTab'));
 const RolesTab = lazy(() => import('./components/tabs/RolesTab'));
 const BroadcastTab = lazy(() => import('./components/tabs/BroadcastTab'));
+const NodesTab = lazy(() => import('./components/tabs/NodesTab'));
 const CommandsTab = lazy(() => import('./components/tabs/CommandsTab'));
 const LogViewer = lazy(() => import('./components/LogViewer'));
 
@@ -226,6 +227,10 @@ export default function App() {
 
             {activeTab === 'Broadcast' && (
               <BroadcastTab guild={selectedGuild} onSave={showToast} lang={lang} />
+            )}
+
+            {activeTab === 'Nodes' && (
+              <NodesTab lang={lang} />
             )}
 
             {activeTab === 'Commands' && (

@@ -17,6 +17,8 @@ export default {
     const role = interaction.options.getRole("role");
     db.prepare("INSERT INTO ticket_settings (guildId, supportRoleId) VALUES (?, ?) ON CONFLICT(guildId) DO UPDATE SET supportRoleId = excluded.supportRoleId").run(guild.id, role.id);
     
+    const settings = db.prepare("SELECT * FROM ticket_settings WHERE guildId = ?").get(guild.id);
+
     const embed = new EmbedBuilder()
       .setTitle("🎫 مركز الدعم الفني والمساعدة - Requiem Support")
       .setDescription("أهلاً بك في نظام التذاكر المتطور الخاص بـ **Requiem**.\n\nيرجى تحديد القسم المناسب لمشكلتك من القائمة المنسدلة أدناه لفتح تذكرة جديدة وسيقوم فريقنا بمساعدتك فوراً.")
@@ -24,6 +26,10 @@ export default {
       .setThumbnail(guild.iconURL({ dynamic: true }))
       .setFooter({ text: "نظام التذاكر الحديث - Requiem", iconURL: client.user.displayAvatarURL() })
       .setTimestamp();
+
+    if (settings?.imageUrl) {
+      embed.setImage(settings.imageUrl);
+    }
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId("ticket_select_menu")
@@ -65,6 +71,8 @@ export default {
     if (!role) return message.reply("الاستخدام الصحيح: setup-ticket <@role>");
     db.prepare("INSERT INTO ticket_settings (guildId, supportRoleId) VALUES (?, ?) ON CONFLICT(guildId) DO UPDATE SET supportRoleId = excluded.supportRoleId").run(guildId, role.id);
     
+    const settings = db.prepare("SELECT * FROM ticket_settings WHERE guildId = ?").get(guildId);
+
     const embed = new EmbedBuilder()
       .setTitle("🎫 مركز الدعم الفني والمساعدة - Requiem Support")
       .setDescription("أهلاً بك في نظام التذاكر المتطور الخاص بـ **Requiem**.\n\nيرجى تحديد القسم المناسب لمشكلتك من القائمة المنسدلة أدناه لفتح تذكرة جديدة وسيقوم فريقنا بمساعدتك فوراً.")
@@ -72,6 +80,10 @@ export default {
       .setThumbnail(message.guild.iconURL({ dynamic: true }))
       .setFooter({ text: "نظام التذاكر الحديث - Requiem", iconURL: client.user.displayAvatarURL() })
       .setTimestamp();
+
+    if (settings?.imageUrl) {
+      embed.setImage(settings.imageUrl);
+    }
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId("ticket_select_menu")

@@ -140,6 +140,22 @@ class BotManager {
     this.logToDashboard(`Bot token removed`);
   }
 
+  async resetBot(botId) {
+    const bot = db.prepare("SELECT * FROM bots WHERE id = ?").get(botId);
+    if (!bot) throw new Error("Bot not found");
+
+    const client = this.clients.get(bot.token);
+    if (client) {
+      try {
+        await client.destroy();
+      } catch (e) {}
+      this.clients.delete(bot.token);
+    }
+
+    this.logToDashboard(`Resetting Node: ${bot.username || bot.id}`);
+    return this.addBot(bot.token);
+  }
+
   getActiveBots() {
     return db.prepare("SELECT * FROM bots WHERE status = 'active'").all() || [];
   }

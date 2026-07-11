@@ -436,6 +436,18 @@ function runMigrations(db) {
       userId TEXT PRIMARY KEY,
       expiresAt DATETIME
     );
+
+    CREATE TABLE IF NOT EXISTS leave_settings (
+      guildId TEXT PRIMARY KEY,
+      channelId TEXT,
+      message TEXT DEFAULT 'Goodbye {user}!',
+      enabled INTEGER DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS bank_settings (
+      guildId TEXT PRIMARY KEY,
+      channelId TEXT
+    );
   `);
 
   try {
@@ -473,9 +485,20 @@ function runMigrations(db) {
 
   addColumnIfNotExists("tickets", "category", "TEXT");
   addColumnIfNotExists("tickets", "staffId", "TEXT");
+  addColumnIfNotExists("ticket_settings", "imageUrl", "TEXT");
   addColumnIfNotExists("protection_settings", "verifiedRoleId", "TEXT");
   addColumnIfNotExists("welcome_settings", "enabled", "INTEGER DEFAULT 1");
+  addColumnIfNotExists("welcome_settings", "status", "TEXT DEFAULT 'on'");
+  addColumnIfNotExists("welcome_settings", "title", "TEXT");
+  addColumnIfNotExists("welcome_settings", "description", "TEXT");
+  addColumnIfNotExists("welcome_settings", "embedColor", "TEXT");
+  addColumnIfNotExists("welcome_settings", "imageUrl", "TEXT");
   addColumnIfNotExists("leveling", "xb", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("leveling", "text_xp", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("leveling", "text_level", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("leveling", "voice_xp", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("leveling", "voice_level", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("leveling", "voice_enabled", "INTEGER DEFAULT 0");
   addColumnIfNotExists("blox_fruits_requests", "robloxId", "TEXT");
   addColumnIfNotExists("leveling_settings", "enabled", "INTEGER DEFAULT 1");
   addColumnIfNotExists("protection_settings", "antiBot", "INTEGER DEFAULT 0");

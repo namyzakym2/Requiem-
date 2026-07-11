@@ -1,140 +1,140 @@
 {
-  "lastUpdate": 0,
+  "lastUpdate": 1783765168066,
   "stocks": {
     "Apple": {
-      "price": 189.5,
+      "price": 181.22,
       "symbol": "AAPL",
       "emoji": "🍎",
       "vol": 0.025
     },
     "Microsoft": {
-      "price": 415.2,
+      "price": 418.61,
       "symbol": "MSFT",
       "emoji": "🪟",
       "vol": 0.022
     },
     "NVIDIA": {
-      "price": 880.0,
+      "price": 890.22,
       "symbol": "NVDA",
       "emoji": "🟢",
       "vol": 0.04
     },
     "Tesla": {
-      "price": 175.3,
+      "price": 186.56,
       "symbol": "TSLA",
       "emoji": "⚡",
       "vol": 0.055
     },
     "Amazon": {
-      "price": 190.8,
+      "price": 201.95,
       "symbol": "AMZN",
       "emoji": "📦",
       "vol": 0.028
     },
     "Google": {
-      "price": 167.4,
+      "price": 159.53,
       "symbol": "GOOGL",
       "emoji": "🔍",
       "vol": 0.023
     },
     "Meta": {
-      "price": 505.6,
+      "price": 537.35,
       "symbol": "META",
       "emoji": "👓",
       "vol": 0.03
     },
     "Saudi Aramco": {
-      "price": 29.1,
+      "price": 30.08,
       "symbol": "2222",
       "emoji": "🛢️",
       "vol": 0.015
     },
     "Samsung": {
-      "price": 72.4,
+      "price": 72.86,
       "symbol": "005930",
       "emoji": "📱",
       "vol": 0.02
     },
     "Toyota": {
-      "price": 218.9,
+      "price": 240.44,
       "symbol": "TM",
       "emoji": "🚗",
       "vol": 0.018
     },
     "Nike": {
-      "price": 92.3,
+      "price": 89.38,
       "symbol": "NKE",
       "emoji": "👟",
       "vol": 0.022
     },
     "Coca-Cola": {
-      "price": 61.8,
+      "price": 61.29,
       "symbol": "KO",
       "emoji": "🥤",
       "vol": 0.012
     },
     "Netflix": {
-      "price": 628.4,
+      "price": 598.56,
       "symbol": "NFLX",
       "emoji": "🎬",
       "vol": 0.035
     },
     "AMD": {
-      "price": 178.9,
+      "price": 199.68,
       "symbol": "AMD",
       "emoji": "🔴",
       "vol": 0.045
     },
     "Intel": {
-      "price": 42.6,
+      "price": 41.19,
       "symbol": "INTC",
       "emoji": "💙",
       "vol": 0.038
     },
     "Disney": {
-      "price": 112.3,
+      "price": 121.53,
       "symbol": "DIS",
       "emoji": "🏰",
       "vol": 0.028
     },
     "Alibaba": {
-      "price": 88.7,
+      "price": 87.61,
       "symbol": "BABA",
       "emoji": "🟠",
       "vol": 0.05
     },
     "Airbnb": {
-      "price": 145.2,
+      "price": 150.16,
       "symbol": "ABNB",
       "emoji": "🏡",
       "vol": 0.04
     },
     "Uber": {
-      "price": 76.5,
+      "price": 80.11,
       "symbol": "UBER",
       "emoji": "🚕",
       "vol": 0.042
     },
     "Spotify": {
-      "price": 320.8,
+      "price": 324.03,
       "symbol": "SPOT",
       "emoji": "🎵",
       "vol": 0.038
     },
     "PayPal": {
-      "price": 67.4,
+      "price": 71.24,
       "symbol": "PYPL",
       "emoji": "💳",
       "vol": 0.035
     },
     "Nexus": {
-      "price": 540.0,
+      "price": 492.3,
       "symbol": "NXS",
       "emoji": "🔷",
       "vol": 0.06
     },
     "Next Generation": {
-      "price": 890.0,
+      "price": 971.31,
       "symbol": "NXG",
       "emoji": "🌐",
       "vol": 0.07
@@ -142,142 +142,142 @@
   },
   "properties": {
     "iPhone 16 Pro": {
-      "price": 45000,
+      "price": 49860.95,
       "category": "📱 إلكترونيات",
       "vol": 0.05
     },
     "لابتوب Gaming": {
-      "price": 30000,
+      "price": 31064.31,
       "category": "📱 إلكترونيات",
       "vol": 0.04
     },
     "PlayStation 5": {
-      "price": 18000,
+      "price": 17750.2,
       "category": "📱 إلكترونيات",
       "vol": 0.04
     },
     "AirPods Pro": {
-      "price": 8000,
+      "price": 8184.24,
       "category": "📱 إلكترونيات",
       "vol": 0.035
     },
     "Apple Watch Ultra": {
-      "price": 25000,
+      "price": 28387.48,
       "category": "📱 إلكترونيات",
       "vol": 0.04
     },
     "تلفزيون Samsung OLED": {
-      "price": 35000,
+      "price": 34391.08,
       "category": "📱 إلكترونيات",
       "vol": 0.035
     },
     "سيارة عادية": {
-      "price": 120000,
+      "price": 118753.39,
       "category": "🚗 مركبات",
       "vol": 0.03
     },
     "سيارة فاخرة": {
-      "price": 500000,
+      "price": 527003.63,
       "category": "🚗 مركبات",
       "vol": 0.035
     },
     "دراجة نارية": {
-      "price": 35000,
+      "price": 38558.27,
       "category": "🚗 مركبات",
       "vol": 0.04
     },
     "سيارة BMW": {
-      "price": 380000,
+      "price": 382531.21,
       "category": "🚗 مركبات",
       "vol": 0.032
     },
     "سيارة Lamborghini": {
-      "price": 1800000,
+      "price": 1817716.17,
       "category": "🚗 مركبات",
       "vol": 0.028
     },
     "سيارة Ferrari": {
-      "price": 2200000,
+      "price": 2174004.13,
       "category": "🚗 مركبات",
       "vol": 0.025
     },
     "شقة صغيرة": {
-      "price": 800000,
+      "price": 765097.55,
       "category": "🏠 عقارات",
       "vol": 0.02
     },
     "فيلا": {
-      "price": 3000000,
+      "price": 3012260.4,
       "category": "🏠 عقارات",
       "vol": 0.015
     },
     "قصر": {
-      "price": 12000000,
+      "price": 11837836.07,
       "category": "🏠 عقارات",
       "vol": 0.012
     },
     "شقة فندقية": {
-      "price": 1500000,
+      "price": 1510725.91,
       "category": "🏠 عقارات",
       "vol": 0.018
     },
     "محل تجاري": {
-      "price": 600000,
+      "price": 644813.76,
       "category": "🏢 أعمال",
       "vol": 0.025
     },
     "مطعم": {
-      "price": 400000,
+      "price": 404377.53,
       "category": "🏢 أعمال",
       "vol": 0.03
     },
     "مصنع": {
-      "price": 5000000,
+      "price": 5193200.89,
       "category": "🏢 أعمال",
       "vol": 0.02
     },
     "فندق": {
-      "price": 8000000,
+      "price": 8074425.91,
       "category": "🏢 أعمال",
       "vol": 0.018
     },
     "ساعة رولكس": {
-      "price": 90000,
+      "price": 90256.75,
       "category": "💎 فاخر",
       "vol": 0.03
     },
     "يخت": {
-      "price": 2000000,
+      "price": 1920552.6,
       "category": "💎 فاخر",
       "vol": 0.02
     },
     "طائرة خاصة": {
-      "price": 8000000,
+      "price": 8136354.79,
       "category": "💎 فاخر",
       "vol": 0.015
     },
     "مجوهرات ألماس": {
-      "price": 250000,
+      "price": 248566.95,
       "category": "💎 فاخر",
       "vol": 0.025
     },
     "حقيبة Hermes Birkin": {
-      "price": 150000,
+      "price": 135749.32,
       "category": "💎 فاخر",
       "vol": 0.028
     },
     "ملابس Gucci": {
-      "price": 20000,
+      "price": 23796.08,
       "category": "👔 أزياء",
       "vol": 0.04
     },
     "بدلة Versace": {
-      "price": 45000,
+      "price": 44739.74,
       "category": "👔 أزياء",
       "vol": 0.035
     },
     "حذاء Louis Vuitton": {
-      "price": 18000,
+      "price": 17917.26,
       "category": "👔 أزياء",
       "vol": 0.04
     }

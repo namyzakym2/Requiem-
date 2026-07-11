@@ -30,7 +30,7 @@ export default {
         if (feature === "leveling") {
           db.prepare("INSERT INTO leveling_settings (guildId, enabled) VALUES (?, ?) ON CONFLICT(guildId) DO UPDATE SET enabled = excluded.enabled").run(guildId, enabled);
         } else if (feature === "welcome") {
-          db.prepare("INSERT INTO welcome_settings (guildId, enabled) VALUES (?, ?) ON CONFLICT(guildId) DO UPDATE SET enabled = excluded.enabled").run(guildId, enabled);
+          db.prepare("INSERT INTO welcome_settings (guildId, enabled, status) VALUES (?, ?, ?) ON CONFLICT(guildId) DO UPDATE SET enabled = excluded.enabled, status = excluded.status").run(guildId, enabled, status);
         } else if (feature === "protection") {
           db.prepare("INSERT INTO protection_settings (guildId, antiLink, antiSpam, antiRaid) VALUES (?, ?, ?, ?) ON CONFLICT(guildId) DO UPDATE SET antiLink = excluded.antiLink, antiSpam = excluded.antiSpam, antiRaid = excluded.antiRaid").run(guildId, enabled, enabled, enabled);
         }
@@ -58,7 +58,7 @@ export default {
           if (feature === "leveling") {
             db.prepare("INSERT INTO leveling_settings (guildId, enabled) VALUES (?, ?) ON CONFLICT(guildId) DO UPDATE SET enabled = excluded.enabled").run(guildId, enabled);
           } else if (feature === "welcome") {
-            db.prepare("INSERT INTO welcome_settings (guildId, enabled) VALUES (?, ?) ON CONFLICT(guildId) DO UPDATE SET enabled = excluded.enabled").run(guildId, enabled);
+            db.prepare("INSERT INTO welcome_settings (guildId, enabled, status) VALUES (?, ?, ?) ON CONFLICT(guildId) DO UPDATE SET enabled = excluded.enabled, status = excluded.status").run(guildId, enabled, status);
           } else if (feature === "protection") {
             db.prepare("INSERT INTO protection_settings (guildId, antiLink, antiSpam, antiRaid) VALUES (?, ?, ?, ?) ON CONFLICT(guildId) DO UPDATE SET antiLink = excluded.antiLink, antiSpam = excluded.antiSpam, antiRaid = excluded.antiRaid").run(guildId, enabled, enabled, enabled);
           }

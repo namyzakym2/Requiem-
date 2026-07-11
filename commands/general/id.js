@@ -6,7 +6,7 @@ export default {
   data: new SlashCommandBuilder().setName("id").setDescription("View your or another user's profile card").addUserOption((option) => option.setName("user").setDescription("The user to view")),
   async executeInteraction(interaction, context) {
     const {
-      client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
+      client, db, Canvas, createCanvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
       OWNER_ID, OWNER_USERNAME, PREFIX, logEvent, logCurrencyTransaction,
       isCommandAllowed, cooldowns, evaluationStates, mafiaGames, activeGames,
       pendingTransfers, lastAzkarSent, spamMap, raidMap
@@ -139,7 +139,7 @@ export default {
   },
   async executeMessage(message, args, context) {
     const {
-      client, db, Canvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
+      client, db, Canvas, createCanvas, loadImage, GIFEncoder, GoogleGenAI, axios, jwt, nblox,
       OWNER_ID, OWNER_USERNAME, PREFIX, logEvent, logCurrencyTransaction,
       isCommandAllowed, cooldowns, evaluationStates, mafiaGames, activeGames,
       pendingTransfers, lastAzkarSent, spamMap, raidMap
