@@ -10,8 +10,8 @@ export default {
     .addSubcommand(sub => sub
       .setName("set")
       .setDescription("ضبط رسالة الترحيب")
-      .addChannelOption(o => o.setName("روم").setDescription("روم الترحيب").setRequired(true))
-      .addStringOption(o => o.setName("رسالة").setDescription("نص الترحيب (استخدم {user} لذكر العضو)").setRequired(true))
+      .addChannelOption(o => o.setName("channel").setDescription("روم الترحيب").setRequired(true))
+      .addStringOption(o => o.setName("message").setDescription("نص الترحيب (استخدم {user} لذكر العضو)").setRequired(true))
     )
     .addSubcommand(sub => sub
       .setName("remove")
@@ -24,8 +24,8 @@ export default {
     const sub = interaction.options.getSubcommand();
     
     if (sub === "set") {
-      const channel = interaction.options.getChannel("روم");
-      const message = interaction.options.getString("رسالة");
+      const channel = interaction.options.getChannel("channel");
+      const message = interaction.options.getString("message");
       
       db.prepare("INSERT OR REPLACE INTO welcome_configs (guildId, channelId, message) VALUES (?, ?, ?)").run(interaction.guildId, channel.id, message);
       return interaction.reply({ content: `✅ تم ضبط الترحيب في ${channel} برسالة: "${message}"` });

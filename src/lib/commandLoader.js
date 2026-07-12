@@ -100,6 +100,7 @@ export async function loadCommands() {
               continue;
             }
 
+            dataJson.category = command.category;
             slashCommandsData.push(dataJson);
           } catch (err) {
             console.error(`⚠️ Error compiling slash command JSON for ${command.name}:`, err.message);
@@ -110,6 +111,36 @@ export async function loadCommands() {
       console.error(`Error loading command ${filePath}:`, err);
     }
   }
+
+  // Sort slashCommandsData so that important commands are registered first (Discord has a 100 global commands limit)
+  const CATEGORY_PRIORITY = {
+    "moderation": 1,
+    "admin": 2,
+    "general": 3,
+    "utility": 4,
+    "economy": 5,
+    "bloxfruits": 6,
+    "games": 7,
+    "social": 8,
+    "owner": 9,
+    "bank": 10
+  };
+
+  // Highly requested commands that must always be prioritized to fit in the top 100
+  const CORE_COMMANDS = ["lock", "unlock", "premium", "credits", "profile", "userinfo", "serverinfo", "work", "daily", "help"];
+
+  slashCommandsData.sort((a, b) => {
+    const aIsCore = CORE_COMMANDS.includes(a.name);
+    const bIsCore = CORE_COMMANDS.includes(b.name);
+    if (aIsCore && !bIsCore) return -1;
+    if (!aIsCore && bIsCore) return 1;
+
+    const aPri = CATEGORY_PRIORITY[a.category] || 99;
+    const bPri = CATEGORY_PRIORITY[b.category] || 99;
+    if (aPri !== bPri) return aPri - bPri;
+
+    return a.name.localeCompare(b.name);
+  });
 
   if (slashCommandsData.length > 100) {
     console.warn(`⚠️ Warning: Found ${slashCommandsData.length} slash commands, but Discord only allows 100 global commands. Truncating to 100.`);

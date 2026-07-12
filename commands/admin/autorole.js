@@ -7,10 +7,10 @@ export default {
   data: new SlashCommandBuilder()
     .setName("autorole")
     .setDescription("🛡️ ضبط الرتب التلقائية")
-    .addRoleOption(o => o.setName("رتبة").setDescription("الرتبة المعطاة").setRequired(true)),
+    .addRoleOption(o => o.setName("role").setDescription("الرتبة المعطاة").setRequired(true)),
   async executeInteraction(interaction) {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ content: "ليس لديك صلاحية.", ephemeral: true });
-    const role = interaction.options.getRole("رتبة");
+    const role = interaction.options.getRole("role");
     db.prepare("INSERT OR REPLACE INTO autorole_configs (guildId, roleId) VALUES (?, ?)").run(interaction.guildId, role.id);
     return interaction.reply({ content: `✅ تم ضبط الرتبة التلقائية إلى ${role.name}` });
   }

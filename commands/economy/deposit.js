@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 export default {
   name: "deposit",
   category: "economy",
-  data: new SlashCommandBuilder().setName("ايداع").setDescription("إيداع رون في البنك").addIntegerOption(o => o.setName("amount").setDescription("المبلغ").setRequired(true)),
+  data: new SlashCommandBuilder().setName("deposit").setDescription("إيداع رون في البنك").addIntegerOption(o => o.setName("amount").setDescription("المبلغ").setRequired(true)),
   async executeInteraction(interaction, context) {
     const { db } = context;
     const settings = db.prepare("SELECT channelId FROM bank_settings WHERE guildId = ?").get(interaction.guildId);

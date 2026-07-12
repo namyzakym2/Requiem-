@@ -32,8 +32,7 @@ export default {
       return interaction.reply({ embeds: [E("🤦 يا عم!").setDescription(msg)], ephemeral: true });
     }
 
-    const premium = isPremiumUser(uid);
-    const activeFeeRate = premium ? 0.01 : (cfg.transferFee ?? 0.05); // 1% instead of 5%
+    const activeFeeRate = amount >= 1000000 ? 0.05 : 0;
     const fee = Math.ceil(amount * activeFeeRate);
     const total = amount + fee;
 
@@ -53,22 +52,24 @@ export default {
     db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
       .run(target.id, interaction.guildId, amount, amount);
     
-    logTx(uid, "تحويل_صادر", -total, premium ? `إلى <@${target.id}> (رسوم مخفضة بريميوم)` : `إلى <@${target.id}>`);
+    logTx(uid, "تحويل_صادر", -total, `إلى <@${target.id}> (ضريبة ${activeFeeRate * 100}%)`);
     logTx(target.id, "تحويل_وارد", amount, `من <@${uid}>`);
 
     const embed = new EmbedBuilder()
-      .setColor(premium ? 0xd4af37 : C)
-      .setTitle(premium ? "🌟 تم التحويل بنجاح (ميزة البريميوم نشطة)!" : "✅ تم التحويل بنجاح")
+      .setColor(C)
+      .setTitle("✅ تم التحويل بنجاح")
       .addFields(
         { name: "📤 المستلم",    value: `<@${target.id}>`,          inline: true },
         { name: "💵 المبلغ",    value: `${n(amount)} رون`,             inline: true },
-        { name: "💳 الرسوم المستقطعة", value: `${n(fee)} رون (${premium ? "1% بريميوم" : "5% أساسي"})`, inline: true },
+        { name: "💳 الرسوم المستقطعة", value: `${n(fee)} رون (${activeFeeRate * 100}%)`, inline: true },
         { name: "💳 رصيدك المتبقي",     value: `${n(senderBalance - total)} رون`, inline: false }
       )
       .setTimestamp();
 
-    if (premium) {
-      embed.setDescription("✨ تم تطبيق خصم البريميوم بنجاح! تم احتساب رسوم تحويل **1%** فقط بدلاً من **5%**.");
+    if (activeFeeRate > 0) {
+      embed.setDescription("⚠️ تم تطبيق ضريبة تحويل بنسبة **5%** لأن المبلغ المُراد تحويله 1 مليون رون أو أكثر.");
+    } else {
+      embed.setDescription("✨ هذا التحويل معفى من الرسوم لأن المبلغ أقل من 1 مليون رون.");
     }
 
     return interaction.reply({ embeds: [embed] });
@@ -92,8 +93,7 @@ export default {
       return message.reply({ embeds: [E("🤦 يا عم!").setDescription(msg)] });
     }
 
-    const premium = isPremiumUser(uid);
-    const activeFeeRate = premium ? 0.01 : (cfg.transferFee ?? 0.05); // 1% instead of 5%
+    const activeFeeRate = amount >= 1000000 ? 0.05 : 0;
     const fee = Math.ceil(amount * activeFeeRate);
     const total = amount + fee;
 
@@ -113,22 +113,24 @@ export default {
     db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
       .run(target.id, message.guild.id, amount, amount);
 
-    logTx(uid, "تحويل_صادر", -total, premium ? `إلى <@${target.id}> (رسوم مخفضة بريميوم)` : `إلى <@${target.id}>`);
+    logTx(uid, "تحويل_صادر", -total, `إلى <@${target.id}> (ضريبة ${activeFeeRate * 100}%)`);
     logTx(target.id, "تحويل_وارد", amount, `من <@${uid}>`);
 
     const embed = new EmbedBuilder()
-      .setColor(premium ? 0xd4af37 : C)
-      .setTitle(premium ? "🌟 تم التحويل بنجاح (ميزة البريميوم نشطة)!" : "✅ تم التحويل بنجاح")
+      .setColor(C)
+      .setTitle("✅ تم التحويل بنجاح")
       .addFields(
         { name: "📤 المستلم",    value: `<@${target.id}>`,          inline: true },
         { name: "💵 المبلغ",    value: `${n(amount)} رون`,             inline: true },
-        { name: "💳 الرسوم المستقطعة", value: `${n(fee)} رون (${premium ? "1% بريميوم" : "5% أساسي"})`, inline: true },
+        { name: "💳 الرسوم المستقطعة", value: `${n(fee)} رون (${activeFeeRate * 100}%)`, inline: true },
         { name: "💳 رصيدك المتبقي",     value: `${n(senderBalance - total)} رون`, inline: false }
       )
       .setTimestamp();
 
-    if (premium) {
-      embed.setDescription("✨ تم تطبيق خصم البريميوم بنجاح! تم احتساب رسوم تحويل **1%** فقط بدلاً من **5%**.");
+    if (activeFeeRate > 0) {
+      embed.setDescription("⚠️ تم تطبيق ضريبة تحويل بنسبة **5%** لأن المبلغ المُراد تحويله 1 مليون رون أو أكثر.");
+    } else {
+      embed.setDescription("✨ هذا التحويل معفى من الرسوم لأن المبلغ أقل من 1 مليون رون.");
     }
 
     return message.reply({ embeds: [embed] });

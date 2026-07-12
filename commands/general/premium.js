@@ -16,7 +16,7 @@ export default {
     .addSubcommand(sub => sub
       .setName("status")
       .setDescription("فحص حالة اشتراك البريميوم الخاص بك أو بعضو آخر")
-      .addUserOption(o => o.setName("العضو").setDescription("العضو المراد فحص اشتراكه"))
+      .addUserOption(o => o.setName("user").setDescription("العضو المراد فحص اشتراكه"))
     )
     .addSubcommand(sub => sub
       .setName("benefits")
@@ -25,13 +25,13 @@ export default {
     .addSubcommand(sub => sub
       .setName("grant")
       .setDescription("منح اشتراك بريميوم لعضو (Admins Only)")
-      .addUserOption(o => o.setName("العضو").setDescription("العضو المراد منحه البريميوم").setRequired(true))
-      .addIntegerOption(o => o.setName("الأيام").setDescription("عدد الأيام (افتراضي 30)").setMinValue(1))
+      .addUserOption(o => o.setName("user").setDescription("العضو المراد منحه البريميوم").setRequired(true))
+      .addIntegerOption(o => o.setName("days").setDescription("عدد الأيام (افتراضي 30)").setMinValue(1))
     )
     .addSubcommand(sub => sub
       .setName("remove")
       .setDescription("إلغاء اشتراك البريميوم من عضو (Admins Only)")
-      .addUserOption(o => o.setName("العضو").setDescription("العضو المراد إلغاء اشتراكه").setRequired(true))
+      .addUserOption(o => o.setName("user").setDescription("العضو المراد إلغاء اشتراكه").setRequired(true))
     ),
 
   async executeInteraction(interaction) {
@@ -75,7 +75,7 @@ export default {
     }
 
     if (subcommand === "status") {
-      const targetUser = interaction.options.getUser("العضو") || interaction.user;
+      const targetUser = interaction.options.getUser("user") || interaction.user;
       const premiumRow = db.prepare("SELECT expiresAt FROM premium_users WHERE userId = ?").get(targetUser.id);
       const isPremium = premiumRow && premiumRow.expiresAt && new Date(premiumRow.expiresAt) > new Date();
 
@@ -117,8 +117,8 @@ export default {
     }
 
     if (subcommand === "grant") {
-      const targetUser = interaction.options.getUser("العضو");
-      const days = interaction.options.getInteger("الأيام") || 30;
+      const targetUser = interaction.options.getUser("user");
+      const days = interaction.options.getInteger("days") || 30;
 
       const existing = db.prepare("SELECT expiresAt FROM premium_users WHERE userId = ?").get(targetUser.id);
       let currentExpiry = Date.now();
@@ -142,7 +142,7 @@ export default {
     }
 
     if (subcommand === "remove") {
-      const targetUser = interaction.options.getUser("العضو");
+      const targetUser = interaction.options.getUser("user");
       db.prepare("DELETE FROM premium_users WHERE userId = ?").run(targetUser.id);
 
       const embed = new EmbedBuilder()

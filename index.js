@@ -269,6 +269,100 @@ async function restoreBackup(guild, backupId) {
   }
 }
 
+async function checkGiveaways(client) {
+  try {
+    const now = Date.now();
+    const activeGiveaways = db.prepare("SELECT * FROM giveaways WHERE endTime <= ? AND status = 'active'").all(now);
+    
+    for (const giveaway of activeGiveaways) {
+      const { messageId, channelId, guildId, prize, winnersCount, hostId } = giveaway;
+      
+      db.prepare("UPDATE giveaways SET status = 'ended' WHERE messageId = ?").run(messageId);
+      
+      const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+      if (!guild) continue;
+      
+      const channel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+      if (!channel) continue;
+      
+      const message = await channel.messages.fetch(messageId).catch(() => null);
+      if (!message) continue;
+      
+      const reaction = message.reactions.cache.get("🎉");
+      if (!reaction) {
+        if (message.embeds && message.embeds[0]) {
+          const embed = EmbedBuilder.from(message.embeds[0]);
+          embed.setDescription(
+            `🟢 **${prize}**\n` +
+            `🔒 **Hosted By** <@${hostId || ""}>\n` +
+            `❌ **No participants**\n\n` +
+            `.mm.8`
+          );
+          embed.setColor("#ef4444");
+          await message.edit({ embeds: [embed] }).catch(() => {});
+        }
+        await channel.send(`❌ انتهت المسابقة على **${prize}** ولم يشارك أحد!`).catch(() => {});
+        continue;
+      }
+      
+      let users = [];
+      let lastUserId = null;
+      while (true) {
+        const options = { limit: 100 };
+        if (lastUserId) options.after = lastUserId;
+        const fetchedUsers = await reaction.users.fetch(options).catch(() => null);
+        if (!fetchedUsers || fetchedUsers.size === 0) break;
+        users.push(...fetchedUsers.values());
+        lastUserId = fetchedUsers.lastKey();
+        if (fetchedUsers.size < 100) break;
+      }
+      
+      const humanUsers = users.filter(user => !user.bot);
+      
+      if (humanUsers.length === 0) {
+        if (message.embeds && message.embeds[0]) {
+          const embed = EmbedBuilder.from(message.embeds[0]);
+          embed.setDescription(
+            `🟢 **${prize}**\n` +
+            `🔒 **Hosted By** <@${hostId || ""}>\n` +
+            `❌ **No participants**\n\n` +
+            `.mm.8`
+          );
+          embed.setColor("#ef4444");
+          await message.edit({ embeds: [embed] }).catch(() => {});
+        }
+        await channel.send(`❌ انتهت المسابقة على **${prize}** ولم يشارك أحد!`).catch(() => {});
+        continue;
+      }
+      
+      const winners = [];
+      const numWinners = Math.min(winnersCount, humanUsers.length);
+      for (let i = 0; i < numWinners; i++) {
+        const randomIndex = Math.floor(Math.random() * humanUsers.length);
+        winners.push(humanUsers.splice(randomIndex, 1)[0]);
+      }
+      
+      const winnerMentions = winners.map(w => `<@${w.id}>`).join(", ");
+      
+      if (message.embeds && message.embeds[0]) {
+        const embed = EmbedBuilder.from(message.embeds[0]);
+        embed.setColor("#10b981");
+        embed.setDescription(
+          `🟢 **${prize}**\n` +
+          `🔒 **Hosted By** <@${hostId || ""}>\n` +
+          `🏆 **Winners:** ${winnerMentions}\n\n` +
+          `.mm.8`
+        );
+        await message.edit({ embeds: [embed], components: [] }).catch(() => {});
+      }
+      
+      await channel.send(`🎉 مبارك ${winnerMentions}! لقد فزت بـ **${prize}** في المسابقة!`).catch(() => {});
+    }
+  } catch (err) {
+    console.error("Error checking/ending giveaways:", err);
+  }
+}
+
 client.on("ready", async () => {
   console.log(`Logged in as ${client.user?.tag || 'Bot'}!`);
   try {
@@ -299,6 +393,8 @@ client.on("ready", async () => {
     console.error("Error loading commands on ready:", err);
   }
   startTaskScheduler(client);
+  // Check active giveaways every 10 seconds
+  setInterval(() => checkGiveaways(client), 10000);
 });
 
 client.on("messageCreate", async (message) => {
@@ -1028,6 +1124,27 @@ client.on("messageReactionAdd", async (reaction, user) => {
         await member.roles.add(rr.roleId).catch(err => console.error("Failed to add reaction role:", err));
       }
     }
+
+    // Handle giveaway reaction update
+    if (emoji.name === "🎉" && !user.bot) {
+      const giveaway = db.prepare("SELECT * FROM giveaways WHERE messageId = ? AND status = 'active'").get(message.id);
+      if (giveaway) {
+        if (message.embeds && message.embeds[0]) {
+          const embed = EmbedBuilder.from(message.embeds[0]);
+          const description = message.embeds[0].description || "";
+          const hostMatch = description.match(/\*\*Hosted By\*\* (<@!?\d+>)/) || description.match(/\*\*Hosted By\*\* (.+)/) || description.match(/👤 \*\*صاحب المسابقة:\*\* (<@!?\d+>)/) || description.match(/👤 \*\*صاحب المسابقة:\*\* (.+)/);
+          const hostMention = hostMatch ? hostMatch[1] : `<@${giveaway.hostId || ""}>`;
+
+          const newDescription = `🟢 **${giveaway.prize}**\n` +
+                                 `🔒 **Hosted By** ${hostMention}\n` +
+                                 `⏰ **Ends** <t:${Math.floor(giveaway.endTime / 1000)}:R>\n\n` +
+                                 `.mm.8`;
+
+          embed.setDescription(newDescription);
+          await message.edit({ embeds: [embed] }).catch(() => {});
+        }
+      }
+    }
   } catch (err) {
     console.error("Error in messageReactionAdd:", err);
   }
@@ -1058,6 +1175,27 @@ client.on("messageReactionRemove", async (reaction, user) => {
       const member = await message.guild.members.fetch(user.id).catch(() => null);
       if (member) {
         await member.roles.remove(rr.roleId).catch(err => console.error("Failed to remove reaction role:", err));
+      }
+    }
+
+    // Handle giveaway reaction update
+    if (emoji.name === "🎉" && !user.bot) {
+      const giveaway = db.prepare("SELECT * FROM giveaways WHERE messageId = ? AND status = 'active'").get(message.id);
+      if (giveaway) {
+        if (message.embeds && message.embeds[0]) {
+          const embed = EmbedBuilder.from(message.embeds[0]);
+          const description = message.embeds[0].description || "";
+          const hostMatch = description.match(/\*\*Hosted By\*\* (<@!?\d+>)/) || description.match(/\*\*Hosted By\*\* (.+)/) || description.match(/👤 \*\*صاحب المسابقة:\*\* (<@!?\d+>)/) || description.match(/👤 \*\*صاحب المسابقة:\*\* (.+)/);
+          const hostMention = hostMatch ? hostMatch[1] : `<@${giveaway.hostId || ""}>`;
+
+          const newDescription = `🟢 **${giveaway.prize}**\n` +
+                                 `🔒 **Hosted By** ${hostMention}\n` +
+                                 `⏰ **Ends** <t:${Math.floor(giveaway.endTime / 1000)}:R>\n\n` +
+                                 `.mm.8`;
+
+          embed.setDescription(newDescription);
+          await message.edit({ embeds: [embed] }).catch(() => {});
+        }
       }
     }
   } catch (err) {

@@ -231,7 +231,8 @@ function runMigrations(db) {
       prize TEXT,
       endTime INTEGER,
       winnersCount INTEGER,
-      status TEXT DEFAULT 'active'
+      status TEXT DEFAULT 'active',
+      hostId TEXT
     );
 
     CREATE TABLE IF NOT EXISTS azkar_settings (
@@ -505,6 +506,7 @@ function runMigrations(db) {
   addColumnIfNotExists("protection_settings", "antiChannelControl", "INTEGER DEFAULT 0");
   addColumnIfNotExists("logging_settings", "logBotAdd", "INTEGER DEFAULT 0");
   addColumnIfNotExists("protection_settings", "counterNuke", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("giveaways", "hostId", "TEXT");
 }
 
 function initDatabase(dbPath) {

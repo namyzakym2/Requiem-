@@ -3,7 +3,7 @@ import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 export default {
   name: "bal",
   category: "economy",
-  data: new SlashCommandBuilder().setName("رصيد").setDescription("عرض رصيدك"),
+  data: new SlashCommandBuilder().setName("bal").setDescription("عرض رصيدك"),
   async executeInteraction(interaction, context) {
     const { db } = context;
     const settings = db.prepare("SELECT channelId FROM bank_settings WHERE guildId = ?").get(interaction.guildId);
