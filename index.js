@@ -447,6 +447,17 @@ client.on("messageCreate", async (message) => {
       return;
     }
 
+    const langRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`lang_${guildId}`);
+    const isLangSet = langRow && (langRow.value === "ar" || langRow.value === "en");
+    if (!isLangSet && commandName !== "set-lang") {
+      const isAdmin = message.member?.permissions.has(PermissionFlagsBits.Administrator);
+      if (isAdmin) {
+        return message.reply("❌ يجب ضبط لغة البوت أولاً باستخدام الأمر `set-lang` قبل استخدام أي ميزة أخرى!\n❌ You must set the bot's language first using the `set-lang` command before using any other feature!").catch(() => {});
+      } else {
+        return message.reply("❌ يجب على مسؤول السيرفر (Administrator) ضبط لغة البوت باستخدام الأمر `set-lang` أولاً.\n❌ A server Administrator must set the bot's language using the `set-lang` command first.").catch(() => {});
+      }
+    }
+
       if (!message.member?.permissions.has(PermissionFlagsBits.Administrator) && !isCommandAllowed(guildId, commandName, message.channelId)) {
         return;
       }
@@ -500,6 +511,23 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.isChatInputCommand()) {
       let { commandName, user, guildId, guild, channel } = interaction;
       if (!guild) return;
+
+      const langRow = db.prepare("SELECT value FROM settings WHERE key = ?").get(`lang_${guildId}`);
+      const isLangSet = langRow && (langRow.value === "ar" || langRow.value === "en");
+      if (!isLangSet && commandName !== "set-lang") {
+        const isAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+        if (isAdmin) {
+          return interaction.reply({
+            content: "❌ يجب ضبط لغة البوت أولاً باستخدام الأمر `/set-lang` قبل استخدام أي ميزة أخرى!\n❌ You must set the bot's language first using the `/set-lang` command before using any other feature!",
+            ephemeral: true
+          }).catch(() => {});
+        } else {
+          return interaction.reply({
+            content: "❌ يجب على مسؤول السيرفر (Administrator) ضبط لغة البوت باستخدام الأمر `/set-lang` أولاً.\n❌ A server Administrator must set the bot's language using the `/set-lang` command first.",
+            ephemeral: true
+          }).catch(() => {});
+        }
+      }
 
       const alias = db.prepare("SELECT originalCommand FROM aliases WHERE guildId = ? AND aliasName = ?").get(guildId, commandName);
       if (alias) {
@@ -777,9 +805,19 @@ client.on("interactionCreate", async (interaction) => {
 
         const category = values[0];
         let categoryName = "دعم فني واستفسارات";
-        if (category === "tech_support") categoryName = "🛠️ الدعم الفني والتقني";
-        else if (category === "sales") categoryName = "💳 الحسابات والمبيعات والبريميوم";
-        else if (category === "complaints") categoryName = "🤝 الشكاوى والاقتراحات";
+        let targetSupportRoleId = null;
+        let targetParentId = null;
+
+        const customCategory = db.prepare("SELECT * FROM ticket_categories WHERE guildId = ? AND (categoryName = ? OR name = ?)").get(guildId, category, category);
+        if (customCategory) {
+          categoryName = (customCategory.emoji ? customCategory.emoji + " " : "") + (customCategory.label || customCategory.categoryName || customCategory.name);
+          if (customCategory.roleId) targetSupportRoleId = customCategory.roleId;
+          if (customCategory.categoryId) targetParentId = customCategory.categoryId;
+        } else {
+          if (category === "tech_support") categoryName = "🛠️ الدعم الفني والتقني";
+          else if (category === "sales") categoryName = "💳 الحسابات والمبيعات والبريميوم";
+          else if (category === "complaints") categoryName = "🤝 الشكاوى والاقتراحات";
+        }
 
         // Check if user already has an open ticket
         const existingTicket = db.prepare("SELECT * FROM tickets WHERE userId = ? AND status = 'open'").get(user.id);
@@ -793,7 +831,7 @@ client.on("interactionCreate", async (interaction) => {
         }
 
         const supportRow = db.prepare("SELECT supportRoleId FROM ticket_settings WHERE guildId = ?").get(guildId);
-        const supportRoleId = supportRow?.supportRoleId;
+        const supportRoleId = targetSupportRoleId || supportRow?.supportRoleId;
 
         const permissionOverwrites = [
           {
@@ -818,6 +856,7 @@ client.on("interactionCreate", async (interaction) => {
           name: `ticket-${cleanUsername || "user"}`,
           type: ChannelType.GuildText,
           permissionOverwrites,
+          parent: targetParentId || undefined
         });
 
         db.prepare("INSERT INTO tickets (userId, channelId, status) VALUES (?, ?, 'open')").run(user.id, ticketChannel.id);
@@ -1778,7 +1817,7 @@ function setupDashboardRoutes(app, context) {
       const { guildId } = req.params;
       const guild = client.guilds.cache.get(guildId);
       if (!guild) return res.status(404).json({ error: "Guild not found" });
-      const channels = guild.channels.cache.filter((c) => c.type === ChannelType.GuildText).map((c) => ({ id: c.id, name: c.name }));
+      const channels = guild.channels.cache.map((c) => ({ id: c.id, name: c.name, type: c.type }));
       res.json(channels);
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch channels" });
@@ -2566,17 +2605,59 @@ function setupDashboardRoutes(app, context) {
   app.post("/api/guilds/:guildId/tickets", express.json(), (req, res) => {
     try {
       const { guildId } = req.params;
-      const { name, roleId, categoryId, supportRoleId, imageUrl } = req.body;
+      const { name, roleId, categoryId, supportRoleId, imageUrl, ticketTitle, ticketDescription, ticketPlaceholder } = req.body;
       if (name && roleId) {
-        db.prepare("INSERT INTO ticket_categories (guildId, name, roleId, categoryId) VALUES (?, ?, ?, ?)").run(guildId, name, roleId, categoryId || "");
+        db.prepare(`
+          INSERT INTO ticket_categories (guildId, categoryName, name, roleId, categoryId, label, description, emoji)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(guildId, categoryName) DO UPDATE SET
+            roleId = excluded.roleId,
+            categoryId = excluded.categoryId,
+            label = excluded.label,
+            description = excluded.description,
+            emoji = excluded.emoji
+        `).run(
+          guildId,
+          name,
+          name,
+          roleId,
+          categoryId || "",
+          req.body.label || name,
+          req.body.description || "",
+          req.body.emoji || "🎫"
+        );
       }
-      if (supportRoleId !== undefined || imageUrl !== undefined) {
+      if (supportRoleId !== undefined || imageUrl !== undefined || ticketTitle !== undefined || ticketDescription !== undefined || ticketPlaceholder !== undefined) {
         const existing = db.prepare("SELECT * FROM ticket_settings WHERE guildId = ?").get(guildId);
         const finalRoleId = supportRoleId !== undefined ? supportRoleId : (existing?.supportRoleId || "");
         const finalImageUrl = imageUrl !== undefined ? imageUrl : (existing?.imageUrl || "");
-        db.prepare("INSERT INTO ticket_settings (guildId, supportRoleId, imageUrl) VALUES (?, ?, ?) ON CONFLICT(guildId) DO UPDATE SET supportRoleId = ?, imageUrl = ?")
-          .run(guildId, finalRoleId, finalImageUrl, finalRoleId, finalImageUrl);
+        const finalTitle = ticketTitle !== undefined ? ticketTitle : (existing?.ticketTitle || "");
+        const finalDesc = ticketDescription !== undefined ? ticketDescription : (existing?.ticketDescription || "");
+        const finalPlaceholder = ticketPlaceholder !== undefined ? ticketPlaceholder : (existing?.ticketPlaceholder || "");
+
+        db.prepare(`
+          INSERT INTO ticket_settings (guildId, supportRoleId, imageUrl, ticketTitle, ticketDescription, ticketPlaceholder)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(guildId) DO UPDATE SET
+            supportRoleId = excluded.supportRoleId,
+            imageUrl = excluded.imageUrl,
+            ticketTitle = excluded.ticketTitle,
+            ticketDescription = excluded.ticketDescription,
+            ticketPlaceholder = excluded.ticketPlaceholder
+        `).run(guildId, finalRoleId, finalImageUrl, finalTitle, finalDesc, finalPlaceholder);
       }
+      res.json({ success: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/guilds/:guildId/tickets/delete-category", express.json(), (req, res) => {
+    try {
+      const { guildId } = req.params;
+      const { categoryName } = req.body;
+      db.prepare("DELETE FROM ticket_categories WHERE guildId = ? AND categoryName = ?").run(guildId, categoryName);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });

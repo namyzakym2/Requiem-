@@ -507,6 +507,14 @@ function runMigrations(db) {
   addColumnIfNotExists("logging_settings", "logBotAdd", "INTEGER DEFAULT 0");
   addColumnIfNotExists("protection_settings", "counterNuke", "INTEGER DEFAULT 0");
   addColumnIfNotExists("giveaways", "hostId", "TEXT");
+  addColumnIfNotExists("ticket_settings", "ticketTitle", "TEXT");
+  addColumnIfNotExists("ticket_settings", "ticketDescription", "TEXT");
+  addColumnIfNotExists("ticket_settings", "ticketPlaceholder", "TEXT");
+  addColumnIfNotExists("ticket_categories", "label", "TEXT");
+  addColumnIfNotExists("ticket_categories", "description", "TEXT");
+  addColumnIfNotExists("ticket_categories", "emoji", "TEXT");
+  addColumnIfNotExists("ticket_categories", "categoryId", "TEXT");
+  addColumnIfNotExists("ticket_categories", "name", "TEXT");
 }
 
 function initDatabase(dbPath) {
