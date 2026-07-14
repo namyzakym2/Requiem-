@@ -37,10 +37,10 @@ export default {
       totalVal += total;
       
       const catEmoji = prop?.category?.split(" ")?.[0] || "📦";
-      items.push(`• **${catEmoji} ${name}**: الكمية **${qty}** (القيمة المقدرة: ${n(total)} رون)`);
+      items.push(`• **${catEmoji} ${name}**: الكمية **${qty}** (القيمة المقدرة: ${n(total)} دولار)`);
     }
 
-    embed.setDescription(items.join("\n") + `\n\n📊 **القيمة الإجمالية للممتلكات:** **${n(totalVal)} رون**`);
+    embed.setDescription(items.join("\n") + `\n\n📊 **القيمة الإجمالية للممتلكات:** **${n(totalVal)} دولار**`);
     return interaction.reply({ embeds: [embed] });
   },
 
@@ -72,10 +72,10 @@ export default {
       totalVal += total;
       
       const catEmoji = prop?.category?.split(" ")?.[0] || "📦";
-      items.push(`• **${catEmoji} ${name}**: الكمية **${qty}** (القيمة المقدرة: ${n(total)} رون)`);
+      items.push(`• **${catEmoji} ${name}**: الكمية **${qty}** (القيمة المقدرة: ${n(total)} دولار)`);
     }
 
-    embed.setDescription(items.join("\n") + `\n\n📊 **القيمة الإجمالية للممتلكات:** **${n(totalVal)} رون**`);
+    embed.setDescription(items.join("\n") + `\n\n📊 **القيمة الإجمالية للممتلكات:** **${n(totalVal)} دولار**`);
     return message.reply({ embeds: [embed] });
   }
 };

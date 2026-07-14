@@ -14,7 +14,7 @@ export default {
 
     const market = load("market.json");
     const embed = new EmbedBuilder().setColor(C)
-      .setTitle("🛒 سوق الرون المركزي")
+      .setTitle("🛒 سوق الدولار المركزي")
       .setDescription("اشترِ العقارات والمركبات والأصول الفاخرة لزيادة إجمالي ثروتك والترقي!\nالأسعار تتقلب تلقائياً كل 5 دقائق.\nاستخدم `/شراء <الاسم>` للشراء أو `/بيع <الاسم>` للبيع.")
       .setTimestamp();
 
@@ -25,7 +25,7 @@ export default {
     }
 
     for (const [cat, items] of Object.entries(cats)) {
-      const val = items.map(i => `• **${i.name}**: ${n(i.price)} رون`).join("\n");
+      const val = items.map(i => `• **${i.name}**: ${n(i.price)} دولار`).join("\n");
       embed.addFields({ name: cat, value: val, inline: true });
     }
 
@@ -38,7 +38,7 @@ export default {
 
     const market = load("market.json");
     const embed = new EmbedBuilder().setColor(C)
-      .setTitle("🛒 سوق الرون المركزي")
+      .setTitle("🛒 سوق الدولار المركزي")
       .setDescription("اشترِ العقارات والمركبات والأصول الفاخرة لزيادة إجمالي ثروتك والترقي!\nالأسعار تتقلب تلقائياً كل 5 دقائق.\nاستخدم `!شراء <الاسم>` للشراء أو `!بيع <الاسم>` للبيع.")
       .setTimestamp();
 
@@ -49,7 +49,7 @@ export default {
     }
 
     for (const [cat, items] of Object.entries(cats)) {
-      const val = items.map(i => `• **${i.name}**: ${n(i.price)} رون`).join("\n");
+      const val = items.map(i => `• **${i.name}**: ${n(i.price)} دولار`).join("\n");
       embed.addFields({ name: cat, value: val, inline: true });
     }
 

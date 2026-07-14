@@ -27,10 +27,10 @@ export default {
 
     for (const [uid, info] of Object.entries(loans)) {
       totalDebt += info.due;
-      lines.push(`• <@${uid}>: المقترض **${n(info.amount)} رون** | المستحق **${n(info.due)} رون**`);
+      lines.push(`• <@${uid}>: المقترض **${n(info.amount)} دولار** | المستحق **${n(info.due)} دولار**`);
     }
 
-    embed.addFields({ name: `📊 إجمالي الديون المعلقة: ${n(totalDebt)} رون`, value: lines.join("\n") });
+    embed.addFields({ name: `📊 إجمالي الديون المعلقة: ${n(totalDebt)} دولار`, value: lines.join("\n") });
 
     return interaction.reply({ embeds: [embed] });
   },
@@ -54,10 +54,10 @@ export default {
 
     for (const [uid, info] of Object.entries(loans)) {
       totalDebt += info.due;
-      lines.push(`• <@${uid}>: المقترض **${n(info.amount)} رون** | المستحق **${n(info.due)} رون**`);
+      lines.push(`• <@${uid}>: المقترض **${n(info.amount)} دولار** | المستحق **${n(info.due)} دولار**`);
     }
 
-    embed.addFields({ name: `📊 إجمالي الديون المعلقة: ${n(totalDebt)} رون`, value: lines.join("\n") });
+    embed.addFields({ name: `📊 إجمالي الديون المعلقة: ${n(totalDebt)} دولار`, value: lines.join("\n") });
 
     return message.reply({ embeds: [embed] });
   }

@@ -26,7 +26,7 @@ export default {
     const items = txs[uid].slice(0, 10).map((tx, idx) => {
       const sign = tx.amount >= 0 ? "+" : "";
       const date = new Date(tx.t).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
-      return `**${idx + 1}.** [${date}] **${tx.type}**: ${sign}${n(tx.amount)} رون ${tx.note ? `(*${tx.note}*)` : ""}`;
+      return `**${idx + 1}.** [${date}] **${tx.type}**: ${sign}${n(tx.amount)} دولار ${tx.note ? `(*${tx.note}*)` : ""}`;
     });
 
     embed.setDescription(items.join("\n"));
@@ -51,7 +51,7 @@ export default {
     const items = txs[uid].slice(0, 10).map((tx, idx) => {
       const sign = tx.amount >= 0 ? "+" : "";
       const date = new Date(tx.t).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
-      return `**${idx + 1}.** [${date}] **${tx.type}**: ${sign}${n(tx.amount)} رون ${tx.note ? `(*${tx.note}*)` : ""}`;
+      return `**${idx + 1}.** [${date}] **${tx.type}**: ${sign}${n(tx.amount)} دولار ${tx.note ? `(*${tx.note}*)` : ""}`;
     });
 
     embed.setDescription(items.join("\n"));

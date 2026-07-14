@@ -28,7 +28,7 @@ export default {
     save("settings.json", s);
 
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("⚙️ إعدادات الراتب")
-      .setDescription(`✅ تم تحديث حدود الراتب اليومي بنجاح:\n\n• **الحد الأدنى:** ${n(min)} رون\n• **الحد الأقصى:** ${n(max)} رون`)] });
+      .setDescription(`✅ تم تحديث حدود الراتب اليومي بنجاح:\n\n• **الحد الأدنى:** ${n(min)} دولار\n• **الحد الأقصى:** ${n(max)} دولار`)] });
   },
 
   async executeMessage(message, args, context) {
@@ -53,6 +53,6 @@ export default {
     save("settings.json", s);
 
     return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("⚙️ إعدادات الراتب")
-      .setDescription(`✅ تم تحديث حدود الراتب اليومي بنجاح:\n\n• **الحد الأدنى:** ${n(min)} رون\n• **الحد الأقصى:** ${n(max)} رون`)] });
+      .setDescription(`✅ تم تحديث حدود الراتب اليومي بنجاح:\n\n• **الحد الأدنى:** ${n(min)} دولار\n• **الحد الأقصى:** ${n(max)} دولار`)] });
   }
 };

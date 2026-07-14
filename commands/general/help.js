@@ -1,13 +1,13 @@
 import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from "discord.js";
 
 const categoryMap = {
-  admin: { name: "🛡️ الإدارة (Admin)", desc: "أوامر مخصصة لإدارة السيرفر، الإعدادات، والتحكم بالبث" },
-  moderation: { name: "🔨 الإشراف (Moderation)", desc: "أوامر الطرد، الحظر، الكتم، التحذيرات، والتحكم بالقنوات" },
-  economy: { name: "💰 الاقتصاد (Economy)", desc: "أوامر العملات، المكافآت، التحويلات المالية، والترتيب" },
-  general: { name: "✨ العامة (General)", desc: "أوامر معلوماتية وتفاعلية لجميع الأعضاء" },
-  games: { name: "🎮 الألعاب (Games)", desc: "ألعاب تفاعلية ومسلية للأعضاء" },
-  owner: { name: "👑 المطور (Owner)", desc: "أوامر خاصة بمالك البوت فقط" },
-  bloxfruits: { name: "🏴‍☠️ بلوكس فروت (Blox Fruits)", desc: "معلومات وأوامر متعلقة بلعبة Blox Fruits" }
+  admin: { name: "🛡️ الإدارة", label: "الإدارة (Admin)", desc: "أوامر مخصصة لإدارة السيرفر، الإعدادات، والتحكم بالبث" },
+  moderation: { name: "🔨 الإشراف", label: "الإشراف (Mod)", desc: "أوامر الطرد، الحظر، الكتم، التحذيرات، والتحكم بالقنوات" },
+  economy: { name: "💰 الاقتصاد", label: "الاقتصاد (Eco)", desc: "أوامر العملات، المكافآت، التحويلات المالية، والترتيب" },
+  general: { name: "✨ العامة", label: "العامة (General)", desc: "أوامر معلوماتية وتفاعلية لجميع الأعضاء" },
+  games: { name: "🎮 الألعاب", label: "الألعاب (Games)", desc: "ألعاب تفاعلية ومسلية للأعضاء" },
+  bloxfruits: { name: "🏴‍☠️ بلوكس فروت", label: "بلوكس فروت", desc: "معلومات وأوامر متعلقة بلعبة Blox Fruits" },
+  owner: { name: "👑 المطور", label: "المطور (Owner)", desc: "أوامر خاصة بمالك البوت فقط" }
 };
 
 export default {
@@ -62,52 +62,72 @@ export default {
       return interaction.reply({ embeds: [embed] });
     }
 
-    // 2. Main Help Menu
-    const embed = new EmbedBuilder()
-      .setColor("#8B0000")
-      .setTitle("🥀 قائمة الأوامر والمساعدة | Command Help Menu")
-      .setDescription(
-        `أهلاً بك في نظام مساعدة **${client.user.username}**.\n` +
-        `اختر قسم من القائمة المنسدلة بالأسفل لعرض أوامره، أو اكتب \`/help [اسم الأمر]\` للحصول على تفاصيل محددة.\n\n` +
-        `**الأقسام المتاحة | Available Categories:**`
-      )
-      .setThumbnail(client.user.displayAvatarURL())
-      .setTimestamp()
-      .setFooter({ text: `طلب بواسطة: ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
+    // 2. Main Help Menu Embed Builder
+    const getMainEmbed = () => {
+      const embed = new EmbedBuilder()
+        .setColor("#8B0000")
+        .setTitle("🥀 قائمة الأوامر والمساعدة | Command Help Menu")
+        .setDescription(
+          `أهلاً بك في نظام مساعدة **${client.user.username}**.\n` +
+          `اضغط على الأزرار أدناه للتنقل المباشر والسلس بين أقسام الأوامر المختلفة، أو اكتب \`/help [اسم الأمر]\` للحصول على تفاصيل دقيقة.\n\n` +
+          `**📂 الأقسام المتاحة والوصف:**`
+        )
+        .setThumbnail(client.user.displayAvatarURL())
+        .setTimestamp()
+        .setFooter({ text: `طلب بواسطة: ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() });
 
-    // List categories in embed
-    Object.keys(categoryMap).forEach((catKey) => {
-      if (catKey === "owner" && !isOwner) return;
-      embed.addFields({
-        name: categoryMap[catKey].name,
-        value: categoryMap[catKey].desc,
-        inline: false
+      Object.keys(categoryMap).forEach((catKey) => {
+        if (catKey === "owner" && !isOwner) return;
+        embed.addFields({
+          name: categoryMap[catKey].name,
+          value: categoryMap[catKey].desc,
+          inline: true
+        });
       });
-    });
+
+      return embed;
+    };
 
     // Create buttons for categories
-    const buttons = [];
-    Object.keys(categoryMap).forEach((catKey) => {
-      if (catKey === "owner" && !isOwner) return;
+    const getActionRows = (activeCategory = null) => {
+      const buttons = [];
+      
+      // Add Main Menu Button if in a subcategory
       buttons.push(
         new ButtonBuilder()
-          .setCustomId(`help_${catKey}`)
-          .setLabel(categoryMap[catKey].name.split(" ")[1] || categoryMap[catKey].name)
-          .setStyle(ButtonStyle.Secondary)
+          .setCustomId("help_main")
+          .setLabel("🏠 الرئيسية")
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(activeCategory === null)
       );
-    });
 
-    const rows = [];
-    for (let i = 0; i < buttons.length; i += 5) {
-      rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
-    }
+      Object.keys(categoryMap).forEach((catKey) => {
+        if (catKey === "owner" && !isOwner) return;
+        const info = categoryMap[catKey];
+        buttons.push(
+          new ButtonBuilder()
+            .setCustomId(`help_${catKey}`)
+            .setLabel(info.label)
+            .setStyle(activeCategory === catKey ? ButtonStyle.Primary : ButtonStyle.Secondary)
+        );
+      });
 
-    const response = await interaction.reply({ embeds: [embed], components: rows });
+      const rows = [];
+      for (let i = 0; i < buttons.length; i += 5) {
+        rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
+      }
+      return rows;
+    };
+
+    const mainEmbed = getMainEmbed();
+    const mainRows = getActionRows();
+
+    const response = await interaction.reply({ embeds: [mainEmbed], components: mainRows });
 
     // Interactive collector for the buttons
     const collector = response.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: 60000
+      time: 90000
     });
 
     collector.on("collect", async (i) => {
@@ -115,39 +135,44 @@ export default {
         return i.reply({ content: "❌ هذه القائمة ليست لك.", ephemeral: true });
       }
 
-      const selectedCategory = i.customId.replace("help_", "");
-      const categoryCommands = uniqueCommands.filter(c => c.category === selectedCategory);
+      const customId = i.customId;
 
-      const catInfo = categoryMap[selectedCategory] || { name: selectedCategory, desc: "" };
-
-      const catEmbed = new EmbedBuilder()
-        .setColor("#8B0000")
-        .setTitle(`${catInfo.name}`)
-        .setDescription(`${catInfo.desc}\n\n**قائمة الأوامر الخاصة بهذا القسم:**`)
-        .setTimestamp()
-        .setFooter({ text: `عدد الأوامر: ${categoryCommands.length} | Requiem Bot`, iconURL: client.user.displayAvatarURL() });
-
-      if (categoryCommands.length === 0) {
-        catEmbed.addFields({ name: "تنبيه", value: "لا توجد أوامر مسجلة في هذا القسم حالياً.", inline: false });
+      if (customId === "help_main") {
+        await i.update({ embeds: [getMainEmbed()], components: getActionRows(null) });
       } else {
-        categoryCommands.forEach(cmd => {
-          const desc = cmd.data?.description || cmd.description || "بدون وصف";
-          const aliasesText = cmd.aliases && cmd.aliases.length > 0 ? ` [${cmd.aliases.join(", ")}]` : "";
-          catEmbed.addFields({
-            name: `\`${PREFIX}${cmd.name}\`${aliasesText}`,
-            value: desc,
-            inline: true
-          });
-        });
-      }
+        const selectedCategory = customId.replace("help_", "");
+        const categoryCommands = uniqueCommands.filter(c => c.category === selectedCategory);
+        const catInfo = categoryMap[selectedCategory] || { name: selectedCategory, desc: "" };
 
-      await i.update({ embeds: [catEmbed] });
+        const catEmbed = new EmbedBuilder()
+          .setColor("#8B0000")
+          .setTitle(`${catInfo.name}`)
+          .setDescription(`${catInfo.desc}\n\n**قائمة الأوامر المسجلة في هذا القسم:**`)
+          .setTimestamp()
+          .setThumbnail(client.user.displayAvatarURL())
+          .setFooter({ text: `عدد الأوامر: ${categoryCommands.length} | Requiem Bot`, iconURL: client.user.displayAvatarURL() });
+
+        if (categoryCommands.length === 0) {
+          catEmbed.addFields({ name: "تنبيه", value: "لا توجد أوامر مسجلة في هذا القسم حالياً.", inline: false });
+        } else {
+          categoryCommands.forEach(cmd => {
+            const desc = cmd.data?.description || cmd.description || "بدون وصف";
+            const aliasesText = cmd.aliases && cmd.aliases.length > 0 ? ` [${cmd.aliases.join(", ")}]` : "";
+            catEmbed.addFields({
+              name: `\`${PREFIX}${cmd.name}\`${aliasesText}`,
+              value: desc,
+              inline: true
+            });
+          });
+        }
+
+        await i.update({ embeds: [catEmbed], components: getActionRows(selectedCategory) });
+      }
     });
 
     collector.on("end", async () => {
-      // Disable buttons on timeout
       try {
-        const disabledRows = rows.map(row => 
+        const disabledRows = getActionRows().map(row => 
           new ActionRowBuilder().addComponents(
             row.components.map(button => ButtonBuilder.from(button).setDisabled(true))
           )
@@ -173,7 +198,6 @@ export default {
 
     // 1. Specific command details or category direct command list
     if (commandArg) {
-      // Check if it's a category name in our map
       if (categoryMap[commandArg] || (commandArg === "owner" && isOwner)) {
         const selectedCategory = commandArg;
         const categoryCommands = uniqueCommands.filter(c => c.category === selectedCategory);
@@ -225,30 +249,121 @@ export default {
       return message.reply({ embeds: [embed] });
     }
 
-    // 2. Main list of all commands for messages (No dropdown because it requires collectors which can be fragile, instead display categorized commands clearly)
-    const embed = new EmbedBuilder()
-      .setColor("#8B0000")
-      .setTitle("🥀 قائمة الأوامر والمساعدة | Command Help Menu")
-      .setDescription(
-        `أهلاً بك في نظام مساعدة **${client.user.username}**.\n` +
-        `اكتب \`${PREFIX}help [اسم القسم أو اسم الأمر]\` لعرض تفاصيل أكثر.\n\n` +
-        `**الأقسام المتاحة والأوامر المندرجة تحتها:**`
-      )
-      .setThumbnail(client.user.displayAvatarURL())
-      .setTimestamp()
-      .setFooter({ text: `طلب بواسطة: ${message.author.tag}`, iconURL: message.author.displayAvatarURL() });
+    // 2. Interactive Prefix command helper
+    const getMainEmbed = () => {
+      const embed = new EmbedBuilder()
+        .setColor("#8B0000")
+        .setTitle("🥀 قائمة الأوامر والمساعدة | Command Help Menu")
+        .setDescription(
+          `أهلاً بك في نظام مساعدة **${client.user.username}**.\n` +
+          `اضغط على الأزرار أدناه للتنقل المباشر والسلس بين أقسام الأوامر المختلفة، أو اكتب \`${PREFIX}help [الأمر]\` للحصول على تفاصيل دقيقة.\n\n` +
+          `**📂 الأقسام المتاحة والوصف:**`
+        )
+        .setThumbnail(client.user.displayAvatarURL())
+        .setTimestamp()
+        .setFooter({ text: `طلب بواسطة: ${message.author.tag}`, iconURL: message.author.displayAvatarURL() });
 
-    Object.keys(categoryMap).forEach((catKey) => {
-      if (catKey === "owner" && !isOwner) return;
-      const categoryCommands = uniqueCommands.filter(c => c.category === catKey);
-      const cmdsList = categoryCommands.length > 0 ? categoryCommands.map(c => `\`${c.name}\``).join(", ") : "لا يوجد";
-      embed.addFields({
-        name: `${categoryMap[catKey].name}`,
-        value: `${categoryMap[catKey].desc}\n📥 **الأوامر:** ${cmdsList}`,
-        inline: false
+      Object.keys(categoryMap).forEach((catKey) => {
+        if (catKey === "owner" && !isOwner) return;
+        embed.addFields({
+          name: categoryMap[catKey].name,
+          value: categoryMap[catKey].desc,
+          inline: true
+        });
       });
+
+      return embed;
+    };
+
+    const getActionRows = (activeCategory = null) => {
+      const buttons = [];
+      
+      // Add Main Menu Button
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId("help_main")
+          .setLabel("🏠 الرئيسية")
+          .setStyle(ButtonStyle.Danger)
+          .setDisabled(activeCategory === null)
+      );
+
+      Object.keys(categoryMap).forEach((catKey) => {
+        if (catKey === "owner" && !isOwner) return;
+        const info = categoryMap[catKey];
+        buttons.push(
+          new ButtonBuilder()
+            .setCustomId(`help_${catKey}`)
+            .setLabel(info.label)
+            .setStyle(activeCategory === catKey ? ButtonStyle.Primary : ButtonStyle.Secondary)
+        );
+      });
+
+      const rows = [];
+      for (let i = 0; i < buttons.length; i += 5) {
+        rows.push(new ActionRowBuilder().addComponents(buttons.slice(i, i + 5)));
+      }
+      return rows;
+    };
+
+    const mainEmbed = getMainEmbed();
+    const mainRows = getActionRows();
+
+    const response = await message.reply({ embeds: [mainEmbed], components: mainRows });
+
+    const collector = response.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: 90000
     });
 
-    await message.reply({ embeds: [embed] });
+    collector.on("collect", async (i) => {
+      if (i.user.id !== message.author.id) {
+        return i.reply({ content: "❌ هذه القائمة ليست لك.", ephemeral: true });
+      }
+
+      const customId = i.customId;
+
+      if (customId === "help_main") {
+        await i.update({ embeds: [getMainEmbed()], components: getActionRows(null) });
+      } else {
+        const selectedCategory = customId.replace("help_", "");
+        const categoryCommands = uniqueCommands.filter(c => c.category === selectedCategory);
+        const catInfo = categoryMap[selectedCategory] || { name: selectedCategory, desc: "" };
+
+        const catEmbed = new EmbedBuilder()
+          .setColor("#8B0000")
+          .setTitle(`${catInfo.name}`)
+          .setDescription(`${catInfo.desc}\n\n**قائمة الأوامر المسجلة في هذا القسم:**`)
+          .setTimestamp()
+          .setThumbnail(client.user.displayAvatarURL())
+          .setFooter({ text: `عدد الأوامر: ${categoryCommands.length} | Requiem Bot`, iconURL: client.user.displayAvatarURL() });
+
+        if (categoryCommands.length === 0) {
+          catEmbed.addFields({ name: "تنبيه", value: "لا توجد أوامر مسجلة في هذا القسم حالياً.", inline: false });
+        } else {
+          categoryCommands.forEach(cmd => {
+            const desc = cmd.data?.description || cmd.description || "بدون وصف";
+            const aliasesText = cmd.aliases && cmd.aliases.length > 0 ? ` [${cmd.aliases.join(", ")}]` : "";
+            catEmbed.addFields({
+              name: `\`${PREFIX}${cmd.name}\`${aliasesText}`,
+              value: desc,
+              inline: true
+            });
+          });
+        }
+
+        await i.update({ embeds: [catEmbed], components: getActionRows(selectedCategory) });
+      }
+    });
+
+    collector.on("end", async () => {
+      try {
+        const disabledRows = getActionRows().map(row => 
+          new ActionRowBuilder().addComponents(
+            row.components.map(button => ButtonBuilder.from(button).setDisabled(true))
+          )
+        );
+        await response.edit({ components: disabledRows }).catch(() => {});
+      } catch (e) {}
+    });
   }
 };

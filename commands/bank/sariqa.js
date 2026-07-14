@@ -27,19 +27,19 @@ export default {
     const now = Date.now();
 
     // Sync thief balance from SQLite
-    const thiefRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
-    const thiefDbBal = thiefRow?.xb || 0;
+    const thiefRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
+    const thiefDbBal = thiefRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: thiefDbBal, vault: 0 };
+      users[uid] = { balance: thiefDbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, thiefDbBal);
     }
 
     // Sync victim balance from SQLite
-    const victimRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(victim.id, interaction.guildId);
-    const victimDbBal = victimRow?.xb || 0;
+    const victimRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(victim.id, interaction.guildId);
+    const victimDbBal = victimRow?.bank_wallet || 0;
     if (!users[victim.id]) {
-      users[victim.id] = { balance: victimDbBal, vault: 0 };
+      users[victim.id] = { balance: victimDbBal, bank_vault: 0 };
     } else {
       users[victim.id].balance = Math.max(users[victim.id].balance || 0, victimDbBal);
     }
@@ -55,7 +55,7 @@ export default {
     const victimCash = vicData.balance || 0;
 
     if (victimCash < 1000) {
-      return interaction.reply({ embeds: [E("🕵️ سرقة فاشلة").setDescription(`محفظة <@${victim.id}> فارغة تقريباً ولا تستحق السرقة. (الحد الأدنى لسرقة شخص هو 1,000 رون)`)], ephemeral: true });
+      return interaction.reply({ embeds: [E("🕵️ سرقة فاشلة").setDescription(`محفظة <@${victim.id}> فارغة تقريباً ولا تستحق السرقة. (الحد الأدنى لسرقة شخص هو 1,000 دولار)`)], ephemeral: true });
     }
 
     if (vicData.protectionUntil && now < vicData.protectionUntil) {
@@ -82,11 +82,11 @@ export default {
       logTx(uid, "سرقة_ناجحة", stolen, `سرقة من <@${victim.id}>`);
       logTx(victim.id, "تعرض_للسرقة", -stolen, `سرقة بواسطة <@${uid}>`);
 
-      db.prepare("UPDATE leveling SET xb = xb + ? WHERE userId = ? AND guildId = ?").run(stolen, uid, interaction.guildId);
-      db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(stolen, victim.id, interaction.guildId);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet + ? WHERE userId = ? AND guildId = ?").run(stolen, uid, interaction.guildId);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(stolen, victim.id, interaction.guildId);
 
       return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x2ecc71).setTitle("🕵️ عملية سرقة ناجحة!")
-        .setDescription(`تسللت بخفة لسرقة <@${victim.id}> ونجحت عمليتك!\n\n💰 **المبلغ المسروق:** +${n(stolen)} رون\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} رون`)
+        .setDescription(`تسللت بخفة لسرقة <@${victim.id}> ونجحت عمليتك!\n\n💰 **المبلغ المسروق:** +${n(stolen)} دولار\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} دولار`)
         .setTimestamp()] });
     } else {
       // Penalty: fine 10% of thief's current wallet balance
@@ -98,10 +98,10 @@ export default {
 
       logTx(uid, "سرقة_فاشلة", -fine, `غرامة سرقة فاشلة من <@${victim.id}>`);
 
-      db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(fine, uid, interaction.guildId);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(fine, uid, interaction.guildId);
 
       return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle("👮 تم القبض عليك!")
-        .setDescription(`أثناء محاولة سرقة <@${victim.id}>، انطلقت صفارات الإنذار وفرضت عليك الشرطة غرامة مالية.\n\n🚓 **الغرامة المخصومة:** -${n(fine)} رون\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} رون`)
+        .setDescription(`أثناء محاولة سرقة <@${victim.id}>، انطلقت صفارات الإنذار وفرضت عليك الشرطة غرامة مالية.\n\n🚓 **الغرامة المخصومة:** -${n(fine)} دولار\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} دولار`)
         .setTimestamp()] });
     }
   },
@@ -126,18 +126,18 @@ export default {
     const cools = load("cooldowns.json");
     const now = Date.now();
 
-    const thiefRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
-    const thiefDbBal = thiefRow?.xb || 0;
+    const thiefRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
+    const thiefDbBal = thiefRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: thiefDbBal, vault: 0 };
+      users[uid] = { balance: thiefDbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, thiefDbBal);
     }
 
-    const victimRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(victim.id, message.guild.id);
-    const victimDbBal = victimRow?.xb || 0;
+    const victimRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(victim.id, message.guild.id);
+    const victimDbBal = victimRow?.bank_wallet || 0;
     if (!users[victim.id]) {
-      users[victim.id] = { balance: victimDbBal, vault: 0 };
+      users[victim.id] = { balance: victimDbBal, bank_vault: 0 };
     } else {
       users[victim.id].balance = Math.max(users[victim.id].balance || 0, victimDbBal);
     }
@@ -153,7 +153,7 @@ export default {
     const victimCash = vicData.balance || 0;
 
     if (victimCash < 1000) {
-      return message.reply({ embeds: [E("🕵️ سرقة فاشلة").setDescription(`محفظة <@${victim.id}> فارغة تقريباً ولا تستحق السرقة. (الحد الأدنى لسرقة شخص هو 1,000 رون)`)] });
+      return message.reply({ embeds: [E("🕵️ سرقة فاشلة").setDescription(`محفظة <@${victim.id}> فارغة تقريباً ولا تستحق السرقة. (الحد الأدنى لسرقة شخص هو 1,000 دولار)`)] });
     }
 
     if (vicData.protectionUntil && now < vicData.protectionUntil) {
@@ -179,11 +179,11 @@ export default {
       logTx(uid, "سرقة_ناجحة", stolen, `سرقة من <@${victim.id}>`);
       logTx(victim.id, "تعرض_للسرقة", -stolen, `سرقة بواسطة <@${uid}>`);
 
-      db.prepare("UPDATE leveling SET xb = xb + ? WHERE userId = ? AND guildId = ?").run(stolen, uid, message.guild.id);
-      db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(stolen, victim.id, message.guild.id);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet + ? WHERE userId = ? AND guildId = ?").run(stolen, uid, message.guild.id);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(stolen, victim.id, message.guild.id);
 
       return message.reply({ embeds: [new EmbedBuilder().setColor(0x2ecc71).setTitle("🕵️ عملية سرقة ناجحة!")
-        .setDescription(`تسللت بخفة لسرقة <@${victim.id}> ونجحت عمليتك!\n\n💰 **المبلغ المسروق:** +${n(stolen)} رون\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} رون`)
+        .setDescription(`تسللت بخفة لسرقة <@${victim.id}> ونجحت عمليتك!\n\n💰 **المبلغ المسروق:** +${n(stolen)} دولار\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} دولار`)
         .setTimestamp()] });
     } else {
       const thiefCash = users[uid].balance || 0;
@@ -194,10 +194,10 @@ export default {
 
       logTx(uid, "سرقة_فاشلة", -fine, `غرامة سرقة فاشلة من <@${victim.id}>`);
 
-      db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(fine, uid, message.guild.id);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(fine, uid, message.guild.id);
 
       return message.reply({ embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle("👮 تم القبض عليك!")
-        .setDescription(`أثناء محاولة سرقة <@${victim.id}>، انطلقت صفارات الإنذار وفرضت عليك الشرطة غرامة مالية.\n\n🚓 **الغرامة المخصومة:** -${n(fine)} رون\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} رون`)
+        .setDescription(`أثناء محاولة سرقة <@${victim.id}>، انطلقت صفارات الإنذار وفرضت عليك الشرطة غرامة مالية.\n\n🚓 **الغرامة المخصومة:** -${n(fine)} دولار\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} دولار`)
         .setTimestamp()] });
     }
   }

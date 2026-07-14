@@ -11,7 +11,7 @@ export default {
   async executeInteraction(interaction, context) {
     const users = load("users.json");
     const sorted = Object.entries(users)
-      .map(([id, u]) => ({ id, total: (u.balance || 0) + (u.vault || 0) }))
+      .map(([id, u]) => ({ id, total: (u.balance || 0) + (u.bank_vault || 0) }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
 
@@ -19,7 +19,7 @@ export default {
     
     for (let i = 0; i < sorted.length; i++) {
         const u = await interaction.guild.members.fetch(sorted[i].id).catch(() => ({user: {username: "مستخدم" + sorted[i].id}}));
-        embed.addFields({ name: `${i+1}. ${u.user?.username || "مستخدم"}`, value: `${n(sorted[i].total)} رون` });
+        embed.addFields({ name: `${i+1}. ${u.user?.username || "مستخدم"}`, value: `${n(sorted[i].total)} دولار` });
     }
     
     return interaction.reply({ embeds: [embed] });

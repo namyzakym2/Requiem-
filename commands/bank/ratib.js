@@ -20,10 +20,10 @@ export default {
     const now = Date.now();
 
     // Sync from SQLite to JSON wallet balance if JSON has less or to initialize
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
+      users[uid] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
@@ -47,17 +47,17 @@ export default {
     save("cooldowns.json", cools);
     logTx(uid, "راتب", salary, premium ? "راتب يومي (مضاعف بريميوم)" : "راتب يومي");
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(uid, interaction.guildId, salary, salary);
 
     const embed = new EmbedBuilder()
       .setColor(premium ? 0xd4af37 : C)
       .setTitle(premium ? "🌟 استلمت راتبك المميز (مضاعف بريميوم)!" : "💵 استلمت راتبك!")
       .addFields(
-        { name: "💰 الراتب الأساسي", value: `${n(premium ? salary / 2 : salary)} رون`, inline: true },
+        { name: "💰 الراتب الأساسي", value: `${n(premium ? salary / 2 : salary)} دولار`, inline: true },
         { name: "✨ ميزة البريميوم", value: premium ? "➕ مضاعف نشط (2x)" : "❌ غير نشط (اكتب `'premium buy` للشراء)", inline: true },
-        { name: "💸 الراتب المستلم", value: `**${n(salary)}** رون`, inline: false },
-        { name: "💳 رصيدك الإجمالي", value: `**${n(users[uid].balance)}** رون`, inline: true }
+        { name: "💸 الراتب المستلم", value: `**${n(salary)}** دولار`, inline: false },
+        { name: "💳 رصيدك الإجمالي", value: `**${n(users[uid].balance)}** دولار`, inline: true }
       )
       .setTimestamp();
 
@@ -79,10 +79,10 @@ export default {
     const cools = load("cooldowns.json");
     const now = Date.now();
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
+      users[uid] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
@@ -106,17 +106,17 @@ export default {
     save("cooldowns.json", cools);
     logTx(uid, "راتب", salary, premium ? "راتب يومي (مضاعف بريميوم)" : "راتب يومي");
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(uid, message.guild.id, salary, salary);
 
     const embed = new EmbedBuilder()
       .setColor(premium ? 0xd4af37 : C)
       .setTitle(premium ? "🌟 استلمت راتبك المميز (مضاعف بريميوم)!" : "💵 استلمت راتبك!")
       .addFields(
-        { name: "💰 الراتب الأساسي", value: `${n(premium ? salary / 2 : salary)} رون`, inline: true },
+        { name: "💰 الراتب الأساسي", value: `${n(premium ? salary / 2 : salary)} دولار`, inline: true },
         { name: "✨ ميزة البريميوم", value: premium ? "➕ مضاعف نشط (2x)" : "❌ غير نشط (اكتب `'premium buy` للشراء)", inline: true },
-        { name: "💸 الراتب المستلم", value: `**${n(salary)}** رون`, inline: false },
-        { name: "💳 رصيدك الإجمالي", value: `**${n(users[uid].balance)}** رون`, inline: true }
+        { name: "💸 الراتب المستلم", value: `**${n(salary)}** دولار`, inline: false },
+        { name: "💳 رصيدك الإجمالي", value: `**${n(users[uid].balance)}** دولار`, inline: true }
       )
       .setTimestamp();
 

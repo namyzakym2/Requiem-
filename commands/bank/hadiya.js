@@ -18,7 +18,7 @@ export default {
     
     // Implementation of balance transfer without fees
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("🎁 هدية مالية")
-      .setDescription(`تم إرسال ${n(amount)} رون إلى <@${target.id}>.`)] });
+      .setDescription(`تم إرسال ${n(amount)} دولار إلى <@${target.id}>.`)] });
   },
 
   async executeMessage(message, args, context) {

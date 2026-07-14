@@ -32,6 +32,27 @@ function drawRoundRect(ctx, x, y, width, height, radius, fill, stroke) {
   }
 }
 
+const formatNumber = (x) => {
+  const num = Number(x);
+  if (isNaN(num)) return '0';
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  
+  if (abs >= 1e12) {
+    return sign + (abs / 1e12).toFixed(2).replace(/\.00$/, '').replace(/(\.[0-9])0$/, '$1') + 'b';
+  }
+  if (abs >= 1e9) {
+    return sign + (abs / 1e9).toFixed(2).replace(/\.00$/, '').replace(/(\.[0-9])0$/, '$1') + 'b';
+  }
+  if (abs >= 1e6) {
+    return sign + (abs / 1e6).toFixed(2).replace(/\.00$/, '').replace(/(\.[0-9])0$/, '$1') + 'm';
+  }
+  if (abs >= 1e3) {
+    return sign + (abs / 1e3).toFixed(2).replace(/\.00$/, '').replace(/(\.[0-9])0$/, '$1') + 'k';
+  }
+  return sign + abs.toLocaleString('en');
+};
+
 async function generateProfileImage(user, db, guildId) {
   const userRow = db.prepare("SELECT * FROM leveling WHERE userId = ? AND guildId = ?").get(user.id, guildId);
   const text_xp = userRow?.text_xp || userRow?.xp || 0;
@@ -211,7 +232,7 @@ async function generateProfileImage(user, db, guildId) {
   // Rows under avatar
   drawPillRow(x3 + 15, cardY + 144, cardWidth - 30, 32, "XP إجمالي", total_xp.toString(), "#f43f5e");
   drawPillRow(x3 + 15, cardY + 186, cardWidth - 30, 32, "المستوى الأعلى", highest_level.toString(), "#10b981");
-  drawPillRow(x3 + 15, cardY + 228, cardWidth - 30, 32, "رصيد الفلوس", `${xb.toLocaleString()} رون`, "#ffd700");
+  drawPillRow(x3 + 15, cardY + 228, cardWidth - 30, 32, "رصيد الفلوس", `${formatNumber(xb)} رون`, "#ffd700");
 
   return canvas.toBuffer("image/png");
 }

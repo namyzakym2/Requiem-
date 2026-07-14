@@ -28,16 +28,16 @@ export default {
     const users = load("users.json");
 
     // Sync from SQLite
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0, inventory: {} };
+      users[uid] = { balance: dbBal, bank_vault: 0, inventory: {} };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
     if ((users[uid].balance || 0) < price) {
-      return interaction.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`سعر السلعة: **${n(price)} رون**\nرصيدك الحالي: **${n(users[uid].balance || 0)} رون**`)], ephemeral: true });
+      return interaction.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`سعر السلعة: **${n(price)} دولار**\nرصيدك الحالي: **${n(users[uid].balance || 0)} دولار**`)], ephemeral: true });
     }
 
     users[uid].balance -= price;
@@ -47,13 +47,13 @@ export default {
     save("users.json", users);
     logTx(uid, "شراء_ممتلكات", -price, `شراء ${itemKey}`);
 
-    db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(price, uid, interaction.guildId);
+    db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(price, uid, interaction.guildId);
 
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم الشراء بنجاح")
       .setDescription(`لقد اشتريت **${itemKey}** بنجاح وأضيفت لمخزن ممتلكاتك.`)
       .addFields(
-        { name: "💵 السعر", value: `${n(price)} رون`, inline: true },
-        { name: "💳 رصيدك المتبقي", value: `${n(users[uid].balance)} رون`, inline: true }
+        { name: "💵 السعر", value: `${n(price)} دولار`, inline: true },
+        { name: "💳 رصيدك المتبقي", value: `${n(users[uid].balance)} دولار`, inline: true }
       ).setTimestamp()] });
   },
 
@@ -77,16 +77,16 @@ export default {
     const uid = message.author.id;
     const users = load("users.json");
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0, inventory: {} };
+      users[uid] = { balance: dbBal, bank_vault: 0, inventory: {} };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
     if ((users[uid].balance || 0) < price) {
-      return message.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`سعر السلعة: **${n(price)} رون**\nرصيدك الحالي: **${n(users[uid].balance || 0)} رون**`)] });
+      return message.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`سعر السلعة: **${n(price)} دولار**\nرصيدك الحالي: **${n(users[uid].balance || 0)} دولار**`)] });
     }
 
     users[uid].balance -= price;
@@ -96,13 +96,13 @@ export default {
     save("users.json", users);
     logTx(uid, "شراء_ممتلكات", -price, `شراء ${itemKey}`);
 
-    db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(price, uid, message.guild.id);
+    db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(price, uid, message.guild.id);
 
     return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم الشراء بنجاح")
       .setDescription(`لقد اشتريت **${itemKey}** بنجاح وأضيفت لمخزن ممتلكاتك.`)
       .addFields(
-        { name: "💵 السعر", value: `${n(price)} رون`, inline: true },
-        { name: "💳 رصيدك المتبقي", value: `${n(users[uid].balance)} رون`, inline: true }
+        { name: "💵 السعر", value: `${n(price)} دولار`, inline: true },
+        { name: "💳 رصيدك المتبقي", value: `${n(users[uid].balance)} دولار`, inline: true }
       ).setTimestamp()] });
   }
 };

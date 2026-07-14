@@ -22,25 +22,25 @@ export default {
     const users = load("users.json");
 
     // Sync from SQLite balance
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, interaction.guildId);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, interaction.guildId);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[target.id]) {
-      users[target.id] = { balance: dbBal, vault: 0 };
+      users[target.id] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[target.id].balance = Math.max(users[target.id].balance || 0, dbBal);
     }
 
     if ((users[target.id].balance || 0) < amount) {
-      return interaction.reply({ embeds: [E("❌ خطأ").setDescription(`رصيد <@${target.id}> الحالي هو **${n(users[target.id].balance || 0)} رون** فقط. لا يمكن سحب مبلغ أكبر من رصيده.`)], ephemeral: true });
+      return interaction.reply({ embeds: [E("❌ خطأ").setDescription(`رصيد <@${target.id}> الحالي هو **${n(users[target.id].balance || 0)} دولار** فقط. لا يمكن سحب مبلغ أكبر من رصيده.`)], ephemeral: true });
     }
 
     users[target.id].balance -= amount;
     save("users.json", users);
 
-    db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(amount, target.id, interaction.guildId);
+    db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(amount, target.id, interaction.guildId);
 
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("⚙️ سحب رصيد من لاعب")
-      .setDescription(`✅ تم سحب مبلغ **${n(amount)} رون** من محفظة <@${target.id}> بنجاح.\n\n💳 **رصيده المتبقي في المحفظة:** ${n(users[target.id].balance)} رون`)] });
+      .setDescription(`✅ تم سحب مبلغ **${n(amount)} دولار** من محفظة <@${target.id}> بنجاح.\n\n💳 **رصيده المتبقي في المحفظة:** ${n(users[target.id].balance)} دولار`)] });
   },
 
   async executeMessage(message, args, context) {
@@ -58,24 +58,24 @@ export default {
 
     const users = load("users.json");
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, message.guild.id);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, message.guild.id);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[target.id]) {
-      users[target.id] = { balance: dbBal, vault: 0 };
+      users[target.id] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[target.id].balance = Math.max(users[target.id].balance || 0, dbBal);
     }
 
     if ((users[target.id].balance || 0) < amount) {
-      return message.reply({ embeds: [E("❌ خطأ").setDescription(`رصيد <@${target.id}> الحالي هو **${n(users[target.id].balance || 0)} رون** فقط. لا يمكن سحب مبلغ أكبر من رصيده.`)] });
+      return message.reply({ embeds: [E("❌ خطأ").setDescription(`رصيد <@${target.id}> الحالي هو **${n(users[target.id].balance || 0)} دولار** فقط. لا يمكن سحب مبلغ أكبر من رصيده.`)] });
     }
 
     users[target.id].balance -= amount;
     save("users.json", users);
 
-    db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(amount, target.id, message.guild.id);
+    db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(amount, target.id, message.guild.id);
 
     return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("⚙️ سحب رصيد من لاعب")
-      .setDescription(`✅ تم سحب مبلغ **${n(amount)} رون** من محفظة <@${target.id}> بنجاح.\n\n💳 **رصيده المتبقي في المحفظة:** ${n(users[target.id].balance)} رون`)] });
+      .setDescription(`✅ تم سحب مبلغ **${n(amount)} دولار** من محفظة <@${target.id}> بنجاح.\n\n💳 **رصيده المتبقي في المحفظة:** ${n(users[target.id].balance)} دولار`)] });
   }
 };

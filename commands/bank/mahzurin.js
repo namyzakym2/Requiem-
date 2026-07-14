@@ -14,12 +14,12 @@ export default {
 
     const bans = load("bans.json");
     if (Object.keys(bans).length === 0) {
-      return interaction.reply({ embeds: [E("⚙️ المحظورون").setDescription("لا يوجد أي أعضاء محظورين في نظام البنك حالياً. الجميع يمتلك حق الوصول! 🎉")] });
+      return interaction.reply({ embeds: [E("⚙️ المحظودولار").setDescription("لا يوجد أي أعضاء محظورين في نظام البنك حالياً. الجميع يمتلك حق الوصول! 🎉")] });
     }
 
     const embed = new EmbedBuilder().setColor(C)
       .setTitle("⚙️ قائمة المحظورين من البنك")
-      .setDescription("الأعضاء المحظورون من ألعاب ومعاملات البنك:")
+      .setDescription("الأعضاء المحظودولار من ألعاب ومعاملات البنك:")
       .setTimestamp();
 
     const lines = [];
@@ -38,12 +38,12 @@ export default {
 
     const bans = load("bans.json");
     if (Object.keys(bans).length === 0) {
-      return message.reply({ embeds: [E("⚙️ المحظورون").setDescription("لا يوجد أي أعضاء محظورين في نظام البنك حالياً. الجميع يمتلك حق الوصول! 🎉")] });
+      return message.reply({ embeds: [E("⚙️ المحظودولار").setDescription("لا يوجد أي أعضاء محظورين في نظام البنك حالياً. الجميع يمتلك حق الوصول! 🎉")] });
     }
 
     const embed = new EmbedBuilder().setColor(C)
       .setTitle("⚙️ قائمة المحظورين من البنك")
-      .setDescription("الأعضاء المحظورون من ألعاب ومعاملات البنك:")
+      .setDescription("الأعضاء المحظودولار من ألعاب ومعاملات البنك:")
       .setTimestamp();
 
     const lines = [];

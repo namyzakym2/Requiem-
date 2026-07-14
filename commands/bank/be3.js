@@ -41,14 +41,14 @@ export default {
     save("users.json", users);
     logTx(uid, "بيع_ممتلكات", price, `بيع ${itemKey}`);
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(uid, interaction.guildId, price, price);
 
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم البيع بنجاح")
-      .setDescription(`لقد بعت **${itemKey}** بنجاح بسعر **${n(price)} رون** للسهم.`)
+      .setDescription(`لقد بعت **${itemKey}** بنجاح بسعر **${n(price)} دولار** للسهم.`)
       .addFields(
-        { name: "💵 العائد", value: `${n(price)} رون`, inline: true },
-        { name: "💳 رصيدك الحالي", value: `${n(users[uid].balance)} رون`, inline: true }
+        { name: "💵 العائد", value: `${n(price)} دولار`, inline: true },
+        { name: "💳 رصيدك الحالي", value: `${n(users[uid].balance)} دولار`, inline: true }
       ).setTimestamp()] });
   },
 
@@ -86,14 +86,14 @@ export default {
     save("users.json", users);
     logTx(uid, "بيع_ممتلكات", price, `بيع ${itemKey}`);
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(uid, message.guild.id, price, price);
 
     return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم البيع بنجاح")
-      .setDescription(`لقد بعت **${itemKey}** بنجاح بسعر **${n(price)} رون** للسهم.`)
+      .setDescription(`لقد بعت **${itemKey}** بنجاح بسعر **${n(price)} دولار** للسهم.`)
       .addFields(
-        { name: "💵 العائد", value: `${n(price)} رون`, inline: true },
-        { name: "💳 رصيدك الحالي", value: `${n(users[uid].balance)} رون`, inline: true }
+        { name: "💵 العائد", value: `${n(price)} دولار`, inline: true },
+        { name: "💳 رصيدك الحالي", value: `${n(users[uid].balance)} دولار`, inline: true }
       ).setTimestamp()] });
   }
 };

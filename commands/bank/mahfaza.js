@@ -44,7 +44,7 @@ export default {
 
       embed.addFields({
         name: `${stock.emoji} ${stockKey} (${symbol})`,
-        value: `**الكمية:** ${n(info.qty)}\n**متوسط الشراء:** ${n(info.avgPrice)} رون\n**السعر الحالي:** ${n(currentPrice)} رون\n**القيمة الحالية:** ${n(value)} رون\n**الربح/الخسارة:** ${sign}${n(gain)} رون (${sign}${pct}%)`,
+        value: `**الكمية:** ${n(info.qty)}\n**متوسط الشراء:** ${n(info.avgPrice)} دولار\n**السعر الحالي:** ${n(currentPrice)} دولار\n**القيمة الحالية:** ${n(value)} دولار\n**الربح/الخسارة:** ${sign}${n(gain)} دولار (${sign}${pct}%)`,
         inline: true
       });
     }
@@ -53,7 +53,7 @@ export default {
     const totalPct = totalInvested > 0 ? ((totalGain / totalInvested) * 100).toFixed(1) : 0;
     const totalSign = totalGain >= 0 ? "+" : "";
 
-    embed.setDescription(`📊 **ملخص الأداء:**\nإجمالي المستثمر: **${n(totalInvested)} رون**\nالقيمة السوقية الحالية: **${n(totalVal)} رون**\nالربح الإجمالي: **${totalSign}${n(totalGain)} رون (${totalSign}${totalPct}%)**`);
+    embed.setDescription(`📊 **ملخص الأداء:**\nإجمالي المستثمر: **${n(totalInvested)} دولار**\nالقيمة السوقية الحالية: **${n(totalVal)} دولار**\nالربح الإجمالي: **${totalSign}${n(totalGain)} دولار (${totalSign}${totalPct}%)**`);
 
     return interaction.reply({ embeds: [embed] });
   },
@@ -94,7 +94,7 @@ export default {
 
       embed.addFields({
         name: `${stock.emoji} ${stockKey} (${symbol})`,
-        value: `**الكمية:** ${n(info.qty)}\n**متوسط الشراء:** ${n(info.avgPrice)} رون\n**السعر الحالي:** ${n(currentPrice)} رون\n**القيمة الحالية:** ${n(value)} رون\n**الربح/الخسارة:** ${sign}${n(gain)} رون (${sign}${pct}%)`,
+        value: `**الكمية:** ${n(info.qty)}\n**متوسط الشراء:** ${n(info.avgPrice)} دولار\n**السعر الحالي:** ${n(currentPrice)} دولار\n**القيمة الحالية:** ${n(value)} دولار\n**الربح/الخسارة:** ${sign}${n(gain)} دولار (${sign}${pct}%)`,
         inline: true
       });
     }
@@ -103,7 +103,7 @@ export default {
     const totalPct = totalInvested > 0 ? ((totalGain / totalInvested) * 100).toFixed(1) : 0;
     const totalSign = totalGain >= 0 ? "+" : "";
 
-    embed.setDescription(`📊 **ملخص الأداء:**\nإجمالي المستثمر: **${n(totalInvested)} رون**\nالقيمة السوقية الحالية: **${n(totalVal)} رون**\nالربح الإجمالي: **${totalSign}${n(totalGain)} رون (${totalSign}${totalPct}%)**`);
+    embed.setDescription(`📊 **ملخص الأداء:**\nإجمالي المستثمر: **${n(totalInvested)} دولار**\nالقيمة السوقية الحالية: **${n(totalVal)} دولار**\nالربح الإجمالي: **${totalSign}${n(totalGain)} دولار (${totalSign}${totalPct}%)**`);
 
     return message.reply({ embeds: [embed] });
   }

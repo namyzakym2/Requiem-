@@ -495,6 +495,9 @@ function runMigrations(db) {
   addColumnIfNotExists("welcome_settings", "embedColor", "TEXT");
   addColumnIfNotExists("welcome_settings", "imageUrl", "TEXT");
   addColumnIfNotExists("leveling", "xb", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("leveling", "vault", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("leveling", "bank_wallet", "INTEGER DEFAULT 0");
+  addColumnIfNotExists("leveling", "bank_vault", "INTEGER DEFAULT 0");
   addColumnIfNotExists("leveling", "text_xp", "INTEGER DEFAULT 0");
   addColumnIfNotExists("leveling", "text_level", "INTEGER DEFAULT 0");
   addColumnIfNotExists("leveling", "voice_xp", "INTEGER DEFAULT 0");

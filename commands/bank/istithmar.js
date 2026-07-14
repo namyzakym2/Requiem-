@@ -25,7 +25,7 @@ export default {
         .setFooter({ text: "استخدم /استثمار <الشركة> <الكمية> للشراء" });
         
       for (const [name, s] of Object.entries(market.stocks)) {
-        embed.addFields({ name: `${s.emoji} ${name} (${s.symbol})`, value: `**السعر:** ${n(s.price)} رون`, inline: true });
+        embed.addFields({ name: `${s.emoji} ${name} (${s.symbol})`, value: `**السعر:** ${n(s.price)} دولار`, inline: true });
       }
       return interaction.reply({ embeds: [embed] });
     }
@@ -40,16 +40,16 @@ export default {
     const uid = interaction.user.id;
     const users = load("users.json");
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0, stocks: {} };
+      users[uid] = { balance: dbBal, bank_vault: 0, stocks: {} };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
     if ((users[uid].balance || 0) < total) {
-      return interaction.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك: **${n(users[uid].balance || 0)} رون**\nالتكلفة الإجمالية: **${n(total)} رون**`)], ephemeral: true });
+      return interaction.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك: **${n(users[uid].balance || 0)} دولار**\nالتكلفة الإجمالية: **${n(total)} دولار**`)], ephemeral: true });
     }
 
     users[uid].balance -= total;
@@ -68,14 +68,14 @@ export default {
     save("users.json", users);
     logTx(uid, "شراء_أسهم", -total, `شراء ${qty} سهم في ${company}`);
 
-    db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(total, uid, interaction.guildId);
+    db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(total, uid, interaction.guildId);
 
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم الشراء بنجاح")
-      .setDescription(`لقد اشتريت **${n(qty)}** سهم من شركة **${company}** بسعر **${n(price)} رون** للسهم.`)
+      .setDescription(`لقد اشتريت **${n(qty)}** سهم من شركة **${company}** بسعر **${n(price)} دولار** للسهم.`)
       .addFields(
-        { name: "💵 التكلفة الكلية", value: `${n(total)} رون`, inline: true },
-        { name: "📈 متوسط الشراء", value: `${n(users[uid].stocks[symbol].avgPrice)} رون`, inline: true },
-        { name: "💳 رصيدك المتبقي", value: `${n(users[uid].balance)} رون`, inline: false }
+        { name: "💵 التكلفة الكلية", value: `${n(total)} دولار`, inline: true },
+        { name: "📈 متوسط الشراء", value: `${n(users[uid].stocks[symbol].avgPrice)} دولار`, inline: true },
+        { name: "💳 رصيدك المتبقي", value: `${n(users[uid].balance)} دولار`, inline: false }
       ).setTimestamp()] });
   },
 
@@ -91,7 +91,7 @@ export default {
         .setFooter({ text: "استخدم !استثمار <الشركة/الرمز> <الكمية> للشراء" });
         
       for (const [name, s] of Object.entries(market.stocks)) {
-        embed.addFields({ name: `${s.emoji} ${name} (${s.symbol})`, value: `**السعر:** ${n(s.price)} رون`, inline: true });
+        embed.addFields({ name: `${s.emoji} ${name} (${s.symbol})`, value: `**السعر:** ${n(s.price)} دولار`, inline: true });
       }
       return message.reply({ embeds: [embed] });
     }
@@ -109,16 +109,16 @@ export default {
     const uid = message.author.id;
     const users = load("users.json");
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0, stocks: {} };
+      users[uid] = { balance: dbBal, bank_vault: 0, stocks: {} };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
     if ((users[uid].balance || 0) < total) {
-      return message.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك: **${n(users[uid].balance || 0)} رون**\nالتكلفة الإجمالية: **${n(total)} رون**`)] });
+      return message.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك: **${n(users[uid].balance || 0)} دولار**\nالتكلفة الإجمالية: **${n(total)} دولار**`)] });
     }
 
     users[uid].balance -= total;
@@ -137,14 +137,14 @@ export default {
     save("users.json", users);
     logTx(uid, "شراء_أسهم", -total, `شراء ${qty} سهم في ${company}`);
 
-    db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(total, uid, message.guild.id);
+    db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(total, uid, message.guild.id);
 
     return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم الشراء بنجاح")
-      .setDescription(`لقد اشتريت **${n(qty)}** سهم من شركة **${company}** بسعر **${n(price)} رون** للسهم.`)
+      .setDescription(`لقد اشتريت **${n(qty)}** سهم من شركة **${company}** بسعر **${n(price)} دولار** للسهم.`)
       .addFields(
-        { name: "💵 التكلفة الكلية", value: `${n(total)} رون`, inline: true },
-        { name: "📈 متوسط الشراء", value: `${n(users[uid].stocks[symbol].avgPrice)} رون`, inline: true },
-        { name: "💳 رصيدك المتبقي", value: `${n(users[uid].balance)} رون`, inline: false }
+        { name: "💵 التكلفة الكلية", value: `${n(total)} دولار`, inline: true },
+        { name: "📈 متوسط الشراء", value: `${n(users[uid].stocks[symbol].avgPrice)} دولار`, inline: true },
+        { name: "💳 رصيدك المتبقي", value: `${n(users[uid].balance)} دولار`, inline: false }
       ).setTimestamp()] });
   }
 };

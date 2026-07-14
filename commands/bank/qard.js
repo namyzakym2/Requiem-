@@ -20,23 +20,23 @@ export default {
     const loans = load("loans.json");
 
     if (loans[uid]) {
-      return interaction.reply({ embeds: [E("❌ قرض نشط").setDescription(`لديك قرض قائم بالفعل بقيمة **${n(loans[uid].amount)} رون** (المستحق للسداد: **${n(loans[uid].due)} رون**).\nيجب عليك سداد القرض الحالي أولاً باستخدام \`/سداد\`.`)], ephemeral: true });
+      return interaction.reply({ embeds: [E("❌ قرض نشط").setDescription(`لديك قرض قائم بالفعل بقيمة **${n(loans[uid].amount)} دولار** (المستحق للسداد: **${n(loans[uid].due)} دولار**).\nيجب عليك سداد القرض الحالي أولاً باستخدام \`/سداد\`.`)], ephemeral: true });
     }
 
     // Sync from SQLite balance
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
+      users[uid] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
-    const totalAssets = (users[uid].balance || 0) + (users[uid].vault || 0);
+    const totalAssets = (users[uid].balance || 0) + (users[uid].bank_vault || 0);
     const maxLoan = Math.max(5000, Math.floor(totalAssets * 0.30));
 
     if (amount > maxLoan) {
-      return interaction.reply({ embeds: [E("❌ تجاوز الحد الأقصى").setDescription(`الحد الأقصى للاقتراض المتاح لك هو **${n(maxLoan)} رون** (30% من إجمالي أصولك المقدرة بـ **${n(totalAssets)} رون**).`)], ephemeral: true });
+      return interaction.reply({ embeds: [E("❌ تجاوز الحد الأقصى").setDescription(`الحد الأقصى للاقتراض المتاح لك هو **${n(maxLoan)} دولار** (30% من إجمالي أصولك المقدرة بـ **${n(totalAssets)} دولار**).`)], ephemeral: true });
     }
 
     const due = Math.floor(amount * 1.10); // 10% interest rate
@@ -51,11 +51,11 @@ export default {
     save("loans.json", loans);
     logTx(uid, "قرض", amount, "أخذ قرض من البنك");
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(uid, interaction.guildId, amount, amount);
 
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تمت الموافقة على القرض")
-      .setDescription(`لقد تم إيداع مبلغ القرض في محفظتك بنجاح.\n\n💵 **مبلغ القرض:** +${n(amount)} رون\n📈 **المبلغ المستحق للسداد (شاملاً الفائدة 10%):** **${n(due)} رون**\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} رون`)
+      .setDescription(`لقد تم إيداع مبلغ القرض في محفظتك بنجاح.\n\n💵 **مبلغ القرض:** +${n(amount)} دولار\n📈 **المبلغ المستحق للسداد (شاملاً الفائدة 10%):** **${n(due)} دولار**\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} دولار`)
       .setFooter({ text: "استخدم /سداد لتسوية ديونك لتجنب الفوائد الغيابية." })
       .setTimestamp()] });
   },
@@ -75,22 +75,22 @@ export default {
     const loans = load("loans.json");
 
     if (loans[uid]) {
-      return message.reply({ embeds: [E("❌ قرض نشط").setDescription(`لديك قرض قائم بالفعل بقيمة **${n(loans[uid].amount)} رون** (المستحق للسداد: **${n(loans[uid].due)} رون**).\nيجب عليك سداد القرض الحالي أولاً باستخدام \`!سداد\`.`)] });
+      return message.reply({ embeds: [E("❌ قرض نشط").setDescription(`لديك قرض قائم بالفعل بقيمة **${n(loans[uid].amount)} دولار** (المستحق للسداد: **${n(loans[uid].due)} دولار**).\nيجب عليك سداد القرض الحالي أولاً باستخدام \`!سداد\`.`)] });
     }
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
+      users[uid] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
-    const totalAssets = (users[uid].balance || 0) + (users[uid].vault || 0);
+    const totalAssets = (users[uid].balance || 0) + (users[uid].bank_vault || 0);
     const maxLoan = Math.max(5000, Math.floor(totalAssets * 0.30));
 
     if (amount > maxLoan) {
-      return message.reply({ embeds: [E("❌ تجاوز الحد الأقصى").setDescription(`الحد الأقصى للاقتراض المتاح لك هو **${n(maxLoan)} رون** (30% من إجمالي أصولك المقدرة بـ **${n(totalAssets)} رون**).`)] });
+      return message.reply({ embeds: [E("❌ تجاوز الحد الأقصى").setDescription(`الحد الأقصى للاقتراض المتاح لك هو **${n(maxLoan)} دولار** (30% من إجمالي أصولك المقدرة بـ **${n(totalAssets)} دولار**).`)] });
     }
 
     const due = Math.floor(amount * 1.10); // 10% interest rate
@@ -105,11 +105,11 @@ export default {
     save("loans.json", loans);
     logTx(uid, "قرض", amount, "أخذ قرض من البنك");
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(uid, message.guild.id, amount, amount);
 
     return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تمت الموافقة على القرض")
-      .setDescription(`لقد تم إيداع مبلغ القرض في محفظتك بنجاح.\n\n💵 **مبلغ القرض:** +${n(amount)} رون\n📈 **المبلغ المستحق للسداد (شاملاً الفائدة 10%):** **${n(due)} رون**\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} رون`)
+      .setDescription(`لقد تم إيداع مبلغ القرض في محفظتك بنجاح.\n\n💵 **مبلغ القرض:** +${n(amount)} دولار\n📈 **المبلغ المستحق للسداد (شاملاً الفائدة 10%):** **${n(due)} دولار**\n💳 **رصيدك الحالي:** ${n(users[uid].balance)} دولار`)
       .setFooter({ text: "استخدم !سداد لتسوية ديونك لتجنب الفوائد الغيابية." })
       .setTimestamp()] });
   }

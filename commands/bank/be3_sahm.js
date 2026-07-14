@@ -45,16 +45,16 @@ export default {
     save("users.json", users);
     logTx(uid, "بيع_أسهم", total, `بيع ${qty} سهم في ${company}`);
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(uid, interaction.guildId, total, total);
 
     const sign = profit >= 0 ? "+" : "";
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم البيع بنجاح")
-      .setDescription(`لقد بعت **${n(qty)}** سهم من شركة **${company}** بسعر **${n(price)} رون** للسهم.`)
+      .setDescription(`لقد بعت **${n(qty)}** سهم من شركة **${company}** بسعر **${n(price)} دولار** للسهم.`)
       .addFields(
-        { name: "💵 العائد الكلي", value: `${n(total)} رون`, inline: true },
-        { name: "📊 صافي الربح/الخسارة", value: `${sign}${n(profit)} رون`, inline: true },
-        { name: "💳 رصيدك الحالي", value: `${n(users[uid].balance)} رون`, inline: false }
+        { name: "💵 العائد الكلي", value: `${n(total)} دولار`, inline: true },
+        { name: "📊 صافي الربح/الخسارة", value: `${sign}${n(profit)} دولار`, inline: true },
+        { name: "💳 رصيدك الحالي", value: `${n(users[uid].balance)} دولار`, inline: false }
       ).setTimestamp()] });
   },
 
@@ -96,16 +96,16 @@ export default {
     save("users.json", users);
     logTx(uid, "بيع_أسهم", total, `بيع ${qty} سهم في ${company}`);
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(uid, message.guild.id, total, total);
 
     const sign = profit >= 0 ? "+" : "";
     return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("✅ تم البيع بنجاح")
-      .setDescription(`لقد بعت **${n(qty)}** سهم من شركة **${company}** بسعر **${n(price)} رون** للسهم.`)
+      .setDescription(`لقد بعت **${n(qty)}** سهم من شركة **${company}** بسعر **${n(price)} دولار** للسهم.`)
       .addFields(
-        { name: "💵 العائد الكلي", value: `${n(total)} رون`, inline: true },
-        { name: "📊 صافي الربح/الخسارة", value: `${sign}${n(profit)} رون`, inline: true },
-        { name: "💳 رصيدك الحالي", value: `${n(users[uid].balance)} رون`, inline: false }
+        { name: "💵 العائد الكلي", value: `${n(total)} دولار`, inline: true },
+        { name: "📊 صافي الربح/الخسارة", value: `${sign}${n(profit)} دولار`, inline: true },
+        { name: "💳 رصيدك الحالي", value: `${n(users[uid].balance)} دولار`, inline: false }
       ).setTimestamp()] });
   }
 };

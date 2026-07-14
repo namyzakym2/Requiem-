@@ -19,16 +19,16 @@ export default {
     const users = load("users.json");
 
     // Sync from SQLite balance
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
+      users[uid] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
     if ((users[uid].balance || 0) < bet) {
-      return interaction.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك في المحفظة: **${n(users[uid].balance || 0)} رون**`)], ephemeral: true });
+      return interaction.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك في المحفظة: **${n(users[uid].balance || 0)} دولار**`)], ephemeral: true });
     }
 
     const win = Math.random() < 0.5;
@@ -41,20 +41,20 @@ export default {
       save("users.json", users);
       logTx(uid, "حظ_فوز", bet, "ربح في لعبة الحظ");
 
-      db.prepare("UPDATE leveling SET xb = xb + ? WHERE userId = ? AND guildId = ?").run(bet, uid, interaction.guildId);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet + ? WHERE userId = ? AND guildId = ?").run(bet, uid, interaction.guildId);
 
       return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("🪙 لعبة الحظ — فوز!")
-        .setDescription(`لقد ابتسم لك الحظ! ظهرت العملة على وجه **الفوز** وضاعفت رهانك.\n\n💰 **الأرباح:** +${n(bet)} رون\n💳 **رصيدك الجديد:** ${n(users[uid].balance)} رون`)
+        .setDescription(`لقد ابتسم لك الحظ! ظهرت العملة على وجه **الفوز** وضاعفت رهانك.\n\n💰 **الأرباح:** +${n(bet)} دولار\n💳 **رصيدك الجديد:** ${n(users[uid].balance)} دولار`)
         .setTimestamp()] });
     } else {
       users[uid].balance -= bet;
       save("users.json", users);
       logTx(uid, "حظ_خسارة", -bet, "خسارة في لعبة الحظ");
 
-      db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(bet, uid, interaction.guildId);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(bet, uid, interaction.guildId);
 
       return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("🪙 لعبة الحظ — خسارة!")
-        .setDescription(`للأسف خاب الحظ وظهرت العملة على وجه **الخسارة**.\n\n📉 **الخسارة:** -${n(bet)} رون\n💳 **رصيدك الجديد:** ${n(users[uid].balance)} رون`)
+        .setDescription(`للأسف خاب الحظ وظهرت العملة على وجه **الخسارة**.\n\n📉 **الخسارة:** -${n(bet)} دولار\n💳 **رصيدك الجديد:** ${n(users[uid].balance)} دولار`)
         .setTimestamp()] });
     }
   },
@@ -72,16 +72,16 @@ export default {
     const uid = message.author.id;
     const users = load("users.json");
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
+      users[uid] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
     if ((users[uid].balance || 0) < bet) {
-      return message.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك في المحفظة: **${n(users[uid].balance || 0)} رون**`)] });
+      return message.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك في المحفظة: **${n(users[uid].balance || 0)} دولار**`)] });
     }
 
     const win = Math.random() < 0.5;
@@ -94,20 +94,20 @@ export default {
       save("users.json", users);
       logTx(uid, "حظ_فوز", bet, "ربح في لعبة الحظ");
 
-      db.prepare("UPDATE leveling SET xb = xb + ? WHERE userId = ? AND guildId = ?").run(bet, uid, message.guild.id);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet + ? WHERE userId = ? AND guildId = ?").run(bet, uid, message.guild.id);
 
       return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("🪙 لعبة الحظ — فوز!")
-        .setDescription(`لقد ابتسم لك الحظ! ظهرت العملة على وجه **الفوز** وضاعفت رهانك.\n\n💰 **الأرباح:** +${n(bet)} رون\n💳 **رصيدك الجديد:** ${n(users[uid].balance)} رون`)
+        .setDescription(`لقد ابتسم لك الحظ! ظهرت العملة على وجه **الفوز** وضاعفت رهانك.\n\n💰 **الأرباح:** +${n(bet)} دولار\n💳 **رصيدك الجديد:** ${n(users[uid].balance)} دولار`)
         .setTimestamp()] });
     } else {
       users[uid].balance -= bet;
       save("users.json", users);
       logTx(uid, "حظ_خسارة", -bet, "خسارة في لعبة الحظ");
 
-      db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(bet, uid, message.guild.id);
+      db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ? WHERE userId = ? AND guildId = ?").run(bet, uid, message.guild.id);
 
       return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("🪙 لعبة الحظ — خسارة!")
-        .setDescription(`للأسف خاب الحظ وظهرت العملة على وجه **الخسارة**.\n\n📉 **الخسارة:** -${n(bet)} رون\n💳 **رصيدك الجديد:** ${n(users[uid].balance)} رون`)
+        .setDescription(`للأسف خاب الحظ وظهرت العملة على وجه **الخسارة**.\n\n📉 **الخسارة:** -${n(bet)} دولار\n💳 **رصيدك الجديد:** ${n(users[uid].balance)} دولار`)
         .setTimestamp()] });
     }
   }

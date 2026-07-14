@@ -6,7 +6,7 @@ export default {
   category: "admin",
   data: new SlashCommandBuilder()
     .setName("دعم")
-    .setDescription("⚙️ أضف مبلغاً من الرون مباشرة إلى محفظة لاعب")
+    .setDescription("⚙️ أضف مبلغاً من الدولار مباشرة إلى محفظة لاعب")
     .addUserOption(o => o.setName("اللاعب").setDescription("اللاعب المستهدف").setRequired(true))
     .addIntegerOption(o => o.setName("المبلغ").setDescription("المبلغ المطلوب إضافته").setMinValue(1).setRequired(true)),
 
@@ -22,10 +22,10 @@ export default {
     const users = load("users.json");
 
     // Sync from SQLite balance
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, interaction.guildId);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, interaction.guildId);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[target.id]) {
-      users[target.id] = { balance: dbBal, vault: 0 };
+      users[target.id] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[target.id].balance = Math.max(users[target.id].balance || 0, dbBal);
     }
@@ -33,11 +33,11 @@ export default {
     users[target.id].balance = (users[target.id].balance || 0) + amount;
     save("users.json", users);
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(target.id, interaction.guildId, amount, amount);
 
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("⚙️ إضافة دعم مالي")
-      .setDescription(`✅ تم منح <@${target.id}> دعم مالي بقيمة **${n(amount)} رون** بنجاح.\n\n💳 **رصيده الحالي في المحفظة:** ${n(users[target.id].balance)} رون`)] });
+      .setDescription(`✅ تم منح <@${target.id}> دعم مالي بقيمة **${n(amount)} دولار** بنجاح.\n\n💳 **رصيده الحالي في المحفظة:** ${n(users[target.id].balance)} دولار`)] });
   },
 
   async executeMessage(message, args, context) {
@@ -55,10 +55,10 @@ export default {
 
     const users = load("users.json");
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, message.guild.id);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(target.id, message.guild.id);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[target.id]) {
-      users[target.id] = { balance: dbBal, vault: 0 };
+      users[target.id] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[target.id].balance = Math.max(users[target.id].balance || 0, dbBal);
     }
@@ -66,10 +66,10 @@ export default {
     users[target.id].balance = (users[target.id].balance || 0) + amount;
     save("users.json", users);
 
-    db.prepare("INSERT INTO leveling (userId, guildId, xb) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET xb = xb + ?")
+    db.prepare("INSERT INTO leveling (userId, guildId, bank_wallet) VALUES (?, ?, ?) ON CONFLICT(userId, guildId) DO UPDATE SET bank_wallet = bank_wallet + ?")
       .run(target.id, message.guild.id, amount, amount);
 
     return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("⚙️ إضافة دعم مالي")
-      .setDescription(`✅ تم منح <@${target.id}> دعم مالي بقيمة **${n(amount)} رون** بنجاح.\n\n💳 **رصيده الحالي في المحفظة:** ${n(users[target.id].balance)} رون`)] });
+      .setDescription(`✅ تم منح <@${target.id}> دعم مالي بقيمة **${n(amount)} دولار** بنجاح.\n\n💳 **رصيده الحالي في المحفظة:** ${n(users[target.id].balance)} دولار`)] });
   }
 };

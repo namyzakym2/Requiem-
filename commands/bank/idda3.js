@@ -6,7 +6,7 @@ export default {
   category: "bank",
   data: new SlashCommandBuilder()
     .setName("إيداع")
-    .setDescription("🏦 أودع في خزنتك (محمية من السرقة)")
+    .setDescription("🏦 أودع في خزنتك لحمايتها من السرقة والنهب")
     .addIntegerOption(o => o.setName("المبلغ").setDescription("المبلغ المودع").setMinValue(1).setRequired(true)),
 
   async executeInteraction(interaction, context) {
@@ -21,32 +21,42 @@ export default {
     const users = load("users.json");
     
     // Sync with SQLite db balance
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, interaction.guildId);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
+      users[uid] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
     if ((users[uid].balance || 0) < amount) {
-      return interaction.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك في المحفظة: **${n(users[uid].balance || 0)} رون**`)], ephemeral: true });
+      return interaction.reply({ 
+        embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك الحالي في المحفظة: **${n(users[uid].balance || 0)} دولار**\nالمبلغ المطلوب إيداعه: **${n(amount)} دولار**`)], 
+        ephemeral: true 
+      });
     }
 
     users[uid].balance = (users[uid].balance || 0) - amount;
-    users[uid].vault = (users[uid].vault || 0) + amount;
+    users[uid].bank_vault = (users[uid].bank_vault || 0) + amount;
     save("users.json", users);
     logTx(uid, "إيداع", -amount, "إيداع في الخزنة");
 
-    // Update SQLite database to reflect the withdrawal from wallet
-    db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(amount, uid, interaction.guildId);
+    // Update SQLite database to reflect the withdrawal from wallet, and update bank_vault
+    db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ?, bank_vault = COALESCE(bank_vault, 0) + ? WHERE userId = ? AND guildId = ?").run(amount, amount, uid, interaction.guildId);
 
-    return interaction.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("🏦 تم الإيداع في الخزنة بنجاح")
+    const embed = new EmbedBuilder()
+      .setColor("#a855f7")
+      .setTitle("🏦 تم إيداع الأموال بنجاح")
+      .setDescription(`تم نقل الأموال بأمان من محفظتك كاش إلى الخزنة الحصينة المشفرة.`)
       .addFields(
-        { name: "💰 المودَع", value: `${n(amount)} رون`, inline: true },
-        { name: "🏦 الخزنة", value: `${n(users[uid].vault)} رون`, inline: true },
-        { name: "💳 المحفظة", value: `${n(users[uid].balance)} رون`, inline: true }
-      ).setTimestamp()] });
+        { name: "💰 المبلغ المودَع", value: `\`${n(amount)} دولار\``, inline: true },
+        { name: "🔒 الرصيد بالخزنة", value: `\`${n(users[uid].bank_vault)} دولار\``, inline: true },
+        { name: "💳 الرصيد بالمحفظة", value: `\`${n(users[uid].balance)} دولار\``, inline: true }
+      )
+      .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+      .setTimestamp();
+
+    return interaction.reply({ embeds: [embed] });
   },
 
   async executeMessage(message, args, context) {
@@ -61,30 +71,39 @@ export default {
     const uid = message.author.id;
     const users = load("users.json");
 
-    const userRow = db.prepare("SELECT xb FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
-    const dbBal = userRow?.xb || 0;
+    const userRow = db.prepare("SELECT bank_wallet FROM leveling WHERE userId = ? AND guildId = ?").get(uid, message.guild.id);
+    const dbBal = userRow?.bank_wallet || 0;
     if (!users[uid]) {
-      users[uid] = { balance: dbBal, vault: 0 };
+      users[uid] = { balance: dbBal, bank_vault: 0 };
     } else {
       users[uid].balance = Math.max(users[uid].balance || 0, dbBal);
     }
 
     if ((users[uid].balance || 0) < amount) {
-      return message.reply({ embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك في المحفظة: **${n(users[uid].balance || 0)} رون**`)] });
+      return message.reply({ 
+        embeds: [E("❌ رصيد غير كافٍ").setDescription(`رصيدك الحالي في المحفظة: **${n(users[uid].balance || 0)} دولار**\nالمبلغ المطلوب إيداعه: **${n(amount)} دولار**`)] 
+      });
     }
 
     users[uid].balance = (users[uid].balance || 0) - amount;
-    users[uid].vault = (users[uid].vault || 0) + amount;
+    users[uid].bank_vault = (users[uid].bank_vault || 0) + amount;
     save("users.json", users);
     logTx(uid, "إيداع", -amount, "إيداع في الخزنة");
 
-    db.prepare("UPDATE leveling SET xb = xb - ? WHERE userId = ? AND guildId = ?").run(amount, uid, message.guild.id);
+    db.prepare("UPDATE leveling SET bank_wallet = bank_wallet - ?, bank_vault = COALESCE(bank_vault, 0) + ? WHERE userId = ? AND guildId = ?").run(amount, amount, uid, message.guild.id);
 
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C).setTitle("🏦 تم الإيداع في الخزنة بنجاح")
+    const embed = new EmbedBuilder()
+      .setColor("#a855f7")
+      .setTitle("🏦 تم إيداع الأموال بنجاح")
+      .setDescription(`تم نقل الأموال بأمان من محفظتك كاش إلى الخزنة الحصينة المشفرة.`)
       .addFields(
-        { name: "💰 المودَع", value: `${n(amount)} رون`, inline: true },
-        { name: "🏦 الخزنة", value: `${n(users[uid].vault)} رون`, inline: true },
-        { name: "💳 المحفظة", value: `${n(users[uid].balance)} رون`, inline: true }
-      ).setTimestamp()] });
+        { name: "💰 المبلغ المودَع", value: `\`${n(amount)} دولار\``, inline: true },
+        { name: "🔒 الرصيد بالخزنة", value: `\`${n(users[uid].bank_vault)} دولار\``, inline: true },
+        { name: "💳 الرصيد بالمحفظة", value: `\`${n(users[uid].balance)} دولار\``, inline: true }
+      )
+      .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+      .setTimestamp();
+
+    return message.reply({ embeds: [embed] });
   }
 };
